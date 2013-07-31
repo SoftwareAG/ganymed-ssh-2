@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Christian Plattner. All rights reserved.
+ * Copyright (c) 2006-2013 Christian Plattner. All rights reserved.
  * Please refer to the LICENSE.txt for licensing details.
  */
 
@@ -32,6 +32,9 @@ import ch.ethz.ssh2.log.Logger;
 import ch.ethz.ssh2.packets.PacketDisconnect;
 import ch.ethz.ssh2.packets.Packets;
 import ch.ethz.ssh2.packets.TypesReader;
+import ch.ethz.ssh2.server.ServerConnectionState;
+import ch.ethz.ssh2.signature.DSAPrivateKey;
+import ch.ethz.ssh2.signature.RSAPrivateKey;
 import ch.ethz.ssh2.util.StringEncoder;
 import ch.ethz.ssh2.util.Tokenizer;
 
@@ -68,8 +71,21 @@ public class TransportManager
 		int high;
 	}
 
-	private final List<byte[]> asynchronousQueue = new Vector<byte[]>();
+	private final List<AsynchronousEntry> asynchronousQueue = new Vector<AsynchronousEntry>();
 	private Thread asynchronousThread = null;
+	private boolean asynchronousPending = false;
+
+	class AsynchronousEntry
+	{
+		public byte[] msg;
+		public Runnable run;
+
+		public AsynchronousEntry(byte[] msg, Runnable run)
+		{
+			this.msg = msg;
+			this.run = run;
+		}
+	}
 
 	class AsynchronousWorker extends Thread
 	{
@@ -78,12 +94,25 @@ public class TransportManager
 		{
 			while (true)
 			{
-				byte[] msg = null;
+				AsynchronousEntry item = null;
 
 				synchronized (asynchronousQueue)
 				{
 					if (asynchronousQueue.size() == 0)
 					{
+						/* Only now we may reset the flag, since we are sure that all queued items
+						 * have been sent (there is a slight delay between de-queuing and sending,
+						 * this is why we need this flag! See code below. Sending takes place outside
+						 * of this lock, this is why a test for size()==0 (from another thread) does not ensure
+						 * that all messages have been sent.
+						 */
+
+						asynchronousPending = false;
+
+						/* Notify any senders that they can proceed, all async messages have been delivered */
+
+						asynchronousQueue.notifyAll();
+
 						/* After the queue is empty for about 2 seconds, stop this thread */
 
 						try
@@ -101,7 +130,7 @@ public class TransportManager
 						}
 					}
 
-					msg = asynchronousQueue.remove(0);
+					item = asynchronousQueue.remove(0);
 				}
 
 				/* The following invocation may throw an IOException.
@@ -118,19 +147,29 @@ public class TransportManager
 
 				try
 				{
-					sendMessage(msg);
+					sendMessageImmediate(item.msg);
 				}
 				catch (IOException e)
 				{
 					return;
 				}
+
+				if (item.run != null)
+				{
+					try
+					{
+						item.run.run();
+					}
+					catch (Exception ignore)
+					{
+					}
+
+				}
 			}
 		}
 	}
 
-	private String hostname;
-	private int port;
-	private final Socket sock = new Socket();
+	private Socket sock = new Socket();
 
 	private final Object connectionSemaphore = new Object();
 
@@ -159,7 +198,7 @@ public class TransportManager
 	 * @return the InetAddress
 	 * @throws UnknownHostException
 	 */
-	private InetAddress createInetAddress(String host) throws UnknownHostException
+	private static InetAddress createInetAddress(String host) throws UnknownHostException
 	{
 		/* Check if it is a dotted IP4 address */
 
@@ -173,7 +212,7 @@ public class TransportManager
 		return InetAddress.getByName(host);
 	}
 
-	private InetAddress parseIPv4Address(String host) throws UnknownHostException
+	private static InetAddress parseIPv4Address(String host) throws UnknownHostException
 	{
 		if (host == null)
 		{
@@ -220,12 +259,6 @@ public class TransportManager
 		}
 
 		return InetAddress.getByAddress(host, addr);
-	}
-
-	public TransportManager(String host, int port) throws IOException
-	{
-		this.hostname = host;
-		this.port = port;
 	}
 
 	public int getPacketOverheadEstimate()
@@ -347,15 +380,17 @@ public class TransportManager
 		}
 	}
 
-	private void establishConnection(ProxyData proxyData, int connectTimeout) throws IOException
+	private static Socket establishConnection(String hostname, int port, ProxyData proxyData, int connectTimeout)
+			throws IOException
 	{
 		/* See the comment for createInetAddress() */
 
 		if (proxyData == null)
 		{
 			InetAddress addr = createInetAddress(hostname);
-			sock.connect(new InetSocketAddress(addr, port), connectTimeout);
-			return;
+			Socket s = new Socket();
+			s.connect(new InetSocketAddress(addr, port), connectTimeout);
+			return s;
 		}
 
 		if (proxyData instanceof HTTPProxyData)
@@ -365,7 +400,8 @@ public class TransportManager
 			/* At the moment, we only support HTTP proxies */
 
 			InetAddress addr = createInetAddress(pd.proxyHost);
-			sock.connect(new InetSocketAddress(addr, pd.proxyPort), connectTimeout);
+			Socket s = new Socket();
+			s.connect(new InetSocketAddress(addr, pd.proxyPort), connectTimeout);
 
 			/* OK, now tell the proxy where we actually want to connect to */
 
@@ -400,7 +436,7 @@ public class TransportManager
 
 			sb.append("\r\n");
 
-			OutputStream out = sock.getOutputStream();
+			OutputStream out = s.getOutputStream();
 
 			out.write(StringEncoder.GetBytes(sb.toString()));
 			out.flush();
@@ -408,7 +444,7 @@ public class TransportManager
 			/* Now parse the HTTP response */
 
 			byte[] buffer = new byte[1024];
-			InputStream in = sock.getInputStream();
+			InputStream in = s.getInputStream();
 
 			int len = ClientServerHello.readLineRN(in, buffer);
 
@@ -457,32 +493,14 @@ public class TransportManager
 					break;
 				}
 			}
-			return;
+			return s;
 		}
 
 		throw new IOException("Unsupported ProxyData");
 	}
 
-	public void initialize(String identification, CryptoWishList cwl, ServerHostKeyVerifier verifier,
-						   DHGexParameters dhgex, int connectTimeout, SecureRandom rnd, ProxyData proxyData)
-			throws IOException
+	private void startReceiver() throws IOException
 	{
-		/* First, establish the TCP connection to the SSH-2 server */
-
-		establishConnection(proxyData, connectTimeout);
-
-		/* Parse the server line and say hello - important: this information is later needed for the
-		 * key exchange (to stop man-in-the-middle attacks) - that is why we wrap it into an object
-		 * for later use.
-		 */
-
-		ClientServerHello csh = new ClientServerHello(identification, sock.getInputStream(), sock.getOutputStream());
-
-		tc = new TransportConnection(sock.getInputStream(), sock.getOutputStream(), rnd);
-
-		km = new KexManager(this, csh, cwl, hostname, port, verifier, rnd);
-		km.initiateKEX(cwl, dhgex);
-
 		receiveThread = new Thread(new Runnable()
 		{
 			public void run()
@@ -491,7 +509,7 @@ public class TransportManager
 				{
 					receiveLoop();
 				}
-				catch (IOException e)
+				catch (Exception e)
 				{
 					close(e, false);
 
@@ -531,6 +549,51 @@ public class TransportManager
 
 		receiveThread.setDaemon(true);
 		receiveThread.start();
+	}
+
+	public void clientInit(String hostname, int port, String softwareversion, CryptoWishList cwl,
+			ServerHostKeyVerifier verifier, DHGexParameters dhgex, int connectTimeout, SecureRandom rnd,
+			ProxyData proxyData) throws IOException
+	{
+		/* First, establish the TCP connection to the SSH-2 server */
+
+		sock = establishConnection(hostname, port, proxyData, connectTimeout);
+
+		/* Parse the server line and say hello - important: this information is later needed for the
+		 * key exchange (to stop man-in-the-middle attacks) - that is why we wrap it into an object
+		 * for later use.
+		 */
+
+		ClientServerHello csh = ClientServerHello.clientHello(softwareversion, sock.getInputStream(),
+				sock.getOutputStream());
+
+		tc = new TransportConnection(sock.getInputStream(), sock.getOutputStream(), rnd);
+
+		km = new ClientKexManager(this, csh, cwl, hostname, port, verifier, rnd);
+		km.initiateKEX(cwl, dhgex, null, null);
+
+		startReceiver();
+	}
+
+	public void serverInit(ServerConnectionState state) throws IOException
+	{
+		/* TCP connection is already established */
+
+		this.sock = state.s;
+
+		/* Parse the client line and say hello - important: this information is later needed for the
+		 * key exchange (to stop man-in-the-middle attacks) - that is why we wrap it into an object
+		 * for later use.
+		 */
+
+		state.csh = ClientServerHello.serverHello(state.softwareversion, sock.getInputStream(), sock.getOutputStream());
+
+		tc = new TransportConnection(sock.getInputStream(), sock.getOutputStream(), state.generator);
+
+		km = new ServerKexManager(state);
+		km.initiateKEX(state.next_cryptoWishList, null, state.next_dsa_key, state.next_rsa_key);
+
+		startReceiver();
 	}
 
 	public void registerMessageHandler(MessageHandler mh, int low, int high)
@@ -594,9 +657,25 @@ public class TransportManager
 		}
 	}
 
-	public void forceKeyExchange(CryptoWishList cwl, DHGexParameters dhgex) throws IOException
+	/**
+	 * 
+	 * @param cwl
+	 * @param dhgex
+	 * @param dsa may be null if this is a client connection
+	 * @param rsa may be null if this is a client connection
+	 * @throws IOException
+	 */
+	public void forceKeyExchange(CryptoWishList cwl, DHGexParameters dhgex, DSAPrivateKey dsa, RSAPrivateKey rsa)
+			throws IOException
 	{
-		km.initiateKEX(cwl, dhgex);
+		synchronized (connectionSemaphore)
+		{
+			if (connectionClosed)
+				/* Inform the caller that there is no point in triggering a new kex */
+				throw (IOException) new IOException("Sorry, this connection is closed.").initCause(reasonClosedCause);
+		}
+
+		km.initiateKEX(cwl, dhgex, dsa, rsa);
 	}
 
 	public void changeRecvCipher(BlockCipher bc, MAC mac)
@@ -611,9 +690,15 @@ public class TransportManager
 
 	public void sendAsynchronousMessage(byte[] msg) throws IOException
 	{
+		sendAsynchronousMessage(msg, null);
+	}
+
+	public void sendAsynchronousMessage(byte[] msg, Runnable run) throws IOException
+	{
 		synchronized (asynchronousQueue)
 		{
-			asynchronousQueue.add(msg);
+			asynchronousQueue.add(new AsynchronousEntry(msg, run));
+			asynchronousPending = true;
 
 			/* This limit should be flexible enough. We need this, otherwise the peer
 			 * can flood us with global requests (and other stuff where we have to reply
@@ -636,6 +721,8 @@ public class TransportManager
 
 				/* The thread will stop after 2 seconds of inactivity (i.e., empty queue) */
 			}
+
+			asynchronousQueue.notifyAll();
 		}
 	}
 
@@ -653,7 +740,39 @@ public class TransportManager
 	 */
 	private boolean idle;
 
+	/**
+	 * Send a message but ensure that all queued messages are being sent first.
+	 * 
+	 * @param msg
+	 * @throws IOException
+	 */
 	public void sendMessage(byte[] msg) throws IOException
+	{
+		synchronized (asynchronousQueue)
+		{
+			while (asynchronousPending)
+			{
+				try
+				{
+					asynchronousQueue.wait(1000);
+				}
+				catch (InterruptedException e)
+				{
+				}
+			}
+		}
+
+		sendMessageImmediate(msg);
+	}
+
+	/**
+	 * Send message, ignore queued async messages that have not been delivered yet.
+	 * Will be called directly from the asynchronousThread thread.
+	 * 
+	 * @param msg
+	 * @throws IOException
+	 */
+	public void sendMessageImmediate(byte[] msg) throws IOException
 	{
 		if (Thread.currentThread() == receiveThread)
 		{

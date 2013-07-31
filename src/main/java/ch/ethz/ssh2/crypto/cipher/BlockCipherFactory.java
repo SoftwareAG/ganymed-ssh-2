@@ -75,7 +75,7 @@ public class BlockCipherFactory
 		try
 		{
 			CipherEntry ce = getEntry(type);
-			Class cc = Class.forName(ce.cipherClass);
+			Class<?> cc = Class.forName(ce.cipherClass);
 			BlockCipher bc = (BlockCipher) cc.newInstance();
 
 			if (type.endsWith("-cbc"))

@@ -44,6 +44,7 @@ public class ConnectionInfo
 	 * "ssh-rsa").
 	 */
 	public String serverHostKeyAlgorithm;
+	
 	/**
 	 * The server host key that was sent during the latest key exchange.
 	 */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Christian Plattner. All rights reserved.
+ * Copyright (c) 2006-2013 Christian Plattner. All rights reserved.
  * Please refer to the LICENSE.txt for licensing details.
  */
 package ch.ethz.ssh2.packets;
@@ -42,6 +42,19 @@ public class PacketUserauthFailure
 
 		if (tr.remain() != 0)
 			throw new IOException("Padding in SSH_MSG_USERAUTH_FAILURE packet!");
+	}
+
+	public byte[] getPayload()
+	{
+		if (payload == null)
+		{
+			TypesWriter tw = new TypesWriter();
+			tw.writeByte(Packets.SSH_MSG_USERAUTH_FAILURE);
+			tw.writeNameList(authThatCanContinue);
+			tw.writeBoolean(partialSuccess);
+			payload = tw.getBytes();
+		}
+		return payload;
 	}
 
 	public String[] getAuthThatCanContinue()

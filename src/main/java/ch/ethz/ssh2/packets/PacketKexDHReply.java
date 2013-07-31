@@ -22,6 +22,13 @@ public class PacketKexDHReply
 	BigInteger f;
 	byte[] signature;
 	
+	public PacketKexDHReply(byte[] hostKey, BigInteger f, byte[] signature)
+	{
+		this.hostKey = hostKey;
+		this.f = f;
+		this.signature = signature;
+	}
+	
 	public PacketKexDHReply(byte payload[], int off, int len) throws IOException
 	{
 		this.payload = new byte[len];
@@ -42,6 +49,20 @@ public class PacketKexDHReply
 		if (tr.remain() != 0) throw new IOException("PADDING IN SSH_MSG_KEXDH_REPLY!");
 	}
 
+	public byte[] getPayload()
+	{
+		if (payload == null)
+		{
+			TypesWriter tw = new TypesWriter();
+			tw.writeByte(Packets.SSH_MSG_KEXDH_REPLY);
+			tw.writeString(hostKey, 0, hostKey.length);
+			tw.writeMPInt(f);
+			tw.writeString(signature, 0, signature.length);
+			payload = tw.getBytes();
+		}
+		return payload;
+	}
+	
 	public BigInteger getF()
 	{
 		return f;

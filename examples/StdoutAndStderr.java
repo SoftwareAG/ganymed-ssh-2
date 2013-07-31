@@ -54,7 +54,10 @@ public class StdoutAndStderr
 			{
 				String line = stdoutReader.readLine();
 				if (line == null)
+				{
+					stdoutReader.close();
 					break;
+				}
 				System.out.println(line);
 			}
 			
@@ -64,7 +67,10 @@ public class StdoutAndStderr
 			{
 				String line = stderrReader.readLine();
 				if (line == null)
+				{
+					stderrReader.close();
 					break;
+				}
 				System.out.println(line);
 			}
 			

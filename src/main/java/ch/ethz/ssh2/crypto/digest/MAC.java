@@ -6,7 +6,7 @@ package ch.ethz.ssh2.crypto.digest;
 
 /**
  * MAC.
- *
+ * 
  * @author Christian Plattner
  * @version 2.50, 03/15/10
  */
@@ -15,20 +15,20 @@ public final class MAC
 	Digest mac;
 	int size;
 
-	public static String[] getMacList()
+	public final static String[] getMacList()
 	{
 		/* Higher Priority First */
 
-		return new String[]{"hmac-sha1-96", "hmac-sha1", "hmac-md5-96", "hmac-md5"};
+		return new String[] { "hmac-sha1-96", "hmac-sha1", "hmac-md5-96", "hmac-md5" };
 	}
 
-	public static void checkMacList(String[] macs)
+	public final static void checkMacList(String[] macs)
 	{
 		for (int i = 0; i < macs.length; i++)
 			getKeyLen(macs[i]);
 	}
 
-	public static int getKeyLen(String type)
+	public final static int getKeyLen(String type)
 	{
 		if (type.equals("hmac-sha1"))
 			return 20;
@@ -65,7 +65,7 @@ public final class MAC
 		size = mac.getDigestLength();
 	}
 
-	public void initMac(int seq)
+	public final void initMac(int seq)
 	{
 		mac.reset();
 		mac.update((byte) (seq >> 24));
@@ -74,17 +74,17 @@ public final class MAC
 		mac.update((byte) (seq));
 	}
 
-	public void update(byte[] packetdata, int off, int len)
+	public final void update(byte[] packetdata, int off, int len)
 	{
 		mac.update(packetdata, off, len);
 	}
 
-	public void getMac(byte[] out, int off)
+	public final void getMac(byte[] out, int off)
 	{
 		mac.digest(out, off);
 	}
 
-	public int size()
+	public final int size()
 	{
 		return size;
 	}

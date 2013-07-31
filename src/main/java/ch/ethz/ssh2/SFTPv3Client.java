@@ -1339,7 +1339,7 @@ public class SFTPv3Client
 		checkHandleValidAndOpen(handle);
 
 		int remaining = len * parallelism;
-		int clientOffset = dstoff;
+		//int clientOffset = dstoff;
 
 		long serverOffset = fileOffset;
 		for (OutstandingReadRequest r : pendingReadQueue.values())
@@ -1372,7 +1372,7 @@ public class SFTPv3Client
 				req.dstOffset = dstoff;
 
 				serverOffset += req.len;
-				clientOffset += req.len;
+				//clientOffset += req.len;
 				remaining -= req.len;
 
 				sendReadRequest(req.req_id, handle, req.serverOffset, req.len);

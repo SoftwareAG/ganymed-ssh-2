@@ -2,27 +2,36 @@
 Release Notes:
 ==============
 
-build???, 2011-06-??
+build260beta1, 2013-08-01
+
+- Joint work by Christian Plattner and David Kocher.
 
 - Requires Java 5 or later.
 
+- Added basic SSH server implementation. This is a proof of concept, use at your own risk.
+  Beware of side channel attacks and other nifty stuff. See BasicServer.java example.
+
 - Provide POM for Maven 3 build.
 
-- Performance gains with request parallelism in requests for read and write write operations in SFTPv3Client.
+- Performance gains with request parallelism in requests for read and write write operations
+  in SFTPv3Client.
 
 - Bugfix for infinite timeout on socket connect.
 
-- SFTPInputStream and SFTPOutputStream to read or write from a SFTPv3FileHandle compatible with standard I/O operations in Java. 
+- SFTPInputStream and SFTPOutputStream to read or write from a SFTPv3FileHandle
+  compatible with standard I/O operations in Java. 
 
-- SCPClient returning SCPInputStream and SCPOutputStream for get and put operations respectively compatible with stanard I/O operations in Java.
+- SCPClient returning SCPInputStream and SCPOutputStream for get and put operations respectively
+  compatible with stanard I/O operations in Java.
 
 - Option to attach a packet listener to SFTPv3Client for logging purposes.
 
-- Fixed a bug in KnownHosts.getPreferredServerHostkeyAlgorithmOrder (it always returned null, which is a valid return value but wrong).
+- Fixed a bug in KnownHosts.getPreferredServerHostkeyAlgorithmOrder (it always returned null,
+  which is a valid return value but wrong).
 
-- Added accessor to query session state and isConnected() in SFTPv3Client returning a boolean
+- Added accessor to query session state and isConnected() in SFTPv3Client returning a boolean.
 
-- Adjusted channel window size
+- Adjusted channel window size.
 
 - Custom PEMDecryptException to catch PEM decoding failure.
 

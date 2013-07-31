@@ -26,12 +26,12 @@ public final class SHA1 implements Digest
 		reset();
 	}
 
-	public int getDigestLength()
+	public final int getDigestLength()
 	{
 		return 20;
 	}
 
-	public void reset()
+	public final void reset()
 	{
 		H0 = 0x67452301;
 		H1 = 0xEFCDAB89;
@@ -46,12 +46,12 @@ public final class SHA1 implements Digest
 		 * information contained in the w[] array */
 	}
 
-	public void update(byte b[])
+	public final void update(byte b[])
 	{
 		update(b, 0, b.length);
 	}
 
-	public void update(byte b[], int off, int len)
+	public final void update(byte b[], int off, int len)
 	{
 		if (len >= 4)
 		{
@@ -59,50 +59,50 @@ public final class SHA1 implements Digest
 
 			switch (currentPos & 3)
 			{
-				case 0:
-					w[idx] = (((b[off++] & 0xff) << 24) | ((b[off++] & 0xff) << 16) | ((b[off++] & 0xff) << 8) | (b[off++] & 0xff));
-					len -= 4;
-					currentPos += 4;
-					currentLen += 32;
-					if (currentPos == 64)
-					{
-						perform();
-						currentPos = 0;
-					}
-					break;
-				case 1:
-					w[idx] = (w[idx] << 24) | (((b[off++] & 0xff) << 16) | ((b[off++] & 0xff) << 8) | (b[off++] & 0xff));
-					len -= 3;
-					currentPos += 3;
-					currentLen += 24;
-					if (currentPos == 64)
-					{
-						perform();
-						currentPos = 0;
-					}
-					break;
-				case 2:
-					w[idx] = (w[idx] << 16) | (((b[off++] & 0xff) << 8) | (b[off++] & 0xff));
-					len -= 2;
-					currentPos += 2;
-					currentLen += 16;
-					if (currentPos == 64)
-					{
-						perform();
-						currentPos = 0;
-					}
-					break;
-				case 3:
-					w[idx] = (w[idx] << 8) | (b[off++] & 0xff);
-					len--;
-					currentPos++;
-					currentLen += 8;
-					if (currentPos == 64)
-					{
-						perform();
-						currentPos = 0;
-					}
-					break;
+			case 0:
+				w[idx] = (((b[off++] & 0xff) << 24) | ((b[off++] & 0xff) << 16) | ((b[off++] & 0xff) << 8) | (b[off++] & 0xff));
+				len -= 4;
+				currentPos += 4;
+				currentLen += 32;
+				if (currentPos == 64)
+				{
+					perform();
+					currentPos = 0;
+				}
+				break;
+			case 1:
+				w[idx] = (w[idx] << 24) | (((b[off++] & 0xff) << 16) | ((b[off++] & 0xff) << 8) | (b[off++] & 0xff));
+				len -= 3;
+				currentPos += 3;
+				currentLen += 24;
+				if (currentPos == 64)
+				{
+					perform();
+					currentPos = 0;
+				}
+				break;
+			case 2:
+				w[idx] = (w[idx] << 16) | (((b[off++] & 0xff) << 8) | (b[off++] & 0xff));
+				len -= 2;
+				currentPos += 2;
+				currentLen += 16;
+				if (currentPos == 64)
+				{
+					perform();
+					currentPos = 0;
+				}
+				break;
+			case 3:
+				w[idx] = (w[idx] << 8) | (b[off++] & 0xff);
+				len--;
+				currentPos++;
+				currentLen += 8;
+				if (currentPos == 64)
+				{
+					perform();
+					currentPos = 0;
+				}
+				break;
 			}
 
 			/* Now currentPos is a multiple of 4 - this is the place to be...*/
@@ -169,7 +169,7 @@ public final class SHA1 implements Digest
 		}
 	}
 
-	public void update(byte b)
+	public final void update(byte b)
 	{
 		int idx = currentPos >> 2;
 		w[idx] = (w[idx] << 8) | (b & 0xff);
@@ -184,7 +184,7 @@ public final class SHA1 implements Digest
 		}
 	}
 
-	private void putInt(byte[] b, int pos, int val)
+	private final void putInt(byte[] b, int pos, int val)
 	{
 		b[pos] = (byte) (val >> 24);
 		b[pos + 1] = (byte) (val >> 16);
@@ -192,12 +192,12 @@ public final class SHA1 implements Digest
 		b[pos + 3] = (byte) val;
 	}
 
-	public void digest(byte[] out)
+	public final void digest(byte[] out)
 	{
 		digest(out, 0);
 	}
 
-	public void digest(byte[] out, int off)
+	public final void digest(byte[] out, int off)
 	{
 		/* Pad with a '1' and 7-31 zero bits... */
 
@@ -240,7 +240,7 @@ public final class SHA1 implements Digest
 		reset();
 	}
 
-	private void perform()
+	private final void perform()
 	{
 		for (int t = 16; t < 80; t++)
 		{

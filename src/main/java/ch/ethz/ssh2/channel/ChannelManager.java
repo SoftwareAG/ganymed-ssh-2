@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006-2011 Christian Plattner. All rights reserved.
+ * Copyright (c) 2006-2013 Christian Plattner. All rights reserved.
  * Please refer to the LICENSE.txt for licensing details.
  */
 
@@ -11,9 +11,14 @@ import java.util.List;
 import java.util.Vector;
 
 import ch.ethz.ssh2.ChannelCondition;
+import ch.ethz.ssh2.PtySettings;
+import ch.ethz.ssh2.ServerConnectionCallback;
+import ch.ethz.ssh2.ServerSessionCallback;
 import ch.ethz.ssh2.log.Logger;
+import ch.ethz.ssh2.packets.PacketChannelFailure;
 import ch.ethz.ssh2.packets.PacketChannelOpenConfirmation;
 import ch.ethz.ssh2.packets.PacketChannelOpenFailure;
+import ch.ethz.ssh2.packets.PacketChannelSuccess;
 import ch.ethz.ssh2.packets.PacketGlobalCancelForwardRequest;
 import ch.ethz.ssh2.packets.PacketGlobalForwardRequest;
 import ch.ethz.ssh2.packets.PacketOpenDirectTCPIPChannel;
@@ -25,6 +30,7 @@ import ch.ethz.ssh2.packets.PacketSessionSubsystemRequest;
 import ch.ethz.ssh2.packets.PacketSessionX11Request;
 import ch.ethz.ssh2.packets.Packets;
 import ch.ethz.ssh2.packets.TypesReader;
+import ch.ethz.ssh2.server.ServerConnectionState;
 import ch.ethz.ssh2.transport.MessageHandler;
 import ch.ethz.ssh2.transport.TransportManager;
 
@@ -40,9 +46,10 @@ public class ChannelManager implements MessageHandler
 {
 	private static final Logger log = Logger.getLogger(ChannelManager.class);
 
-	private final HashMap<String, X11ServerData> x11_magic_cookies = new HashMap<String, X11ServerData>();
+	private final ServerConnectionState server_state;
+	private final TransportManager tm;
 
-	private TransportManager tm;
+	private final HashMap<String, X11ServerData> x11_magic_cookies = new HashMap<String, X11ServerData>();
 
 	private final List<Channel> channels = new Vector<Channel>();
 	private int nextLocalChannel = 100;
@@ -56,9 +63,25 @@ public class ChannelManager implements MessageHandler
 
 	private boolean listenerThreadsAllowed = true;
 
+	/**
+	 * Constructor for client-mode.
+	 * @param tm
+	 */
 	public ChannelManager(TransportManager tm)
 	{
+		this.server_state = null;
 		this.tm = tm;
+		tm.registerMessageHandler(this, 80, 100);
+	}
+
+	/**
+	 * Constructor for server-mode.
+	 * @param state
+	 */
+	public ChannelManager(ServerConnectionState state)
+	{
+		this.server_state = state;
+		this.tm = state.tm;
 		tm.registerMessageHandler(this, 80, 100);
 	}
 
@@ -280,7 +303,6 @@ public class ChannelManager implements MessageHandler
 
 	public void closeAllChannels()
 	{
-
 		log.debug("Closing all channels");
 
 		List<Channel> channel_copy = new Vector<Channel>();
@@ -332,7 +354,6 @@ public class ChannelManager implements MessageHandler
 			tm.sendMessage(msg);
 			c.closeMessageSent = true;
 		}
-
 
 		log.debug("Sent SSH_MSG_CHANNEL_CLOSE (channel " + c.localID + ")");
 	}
@@ -502,7 +523,6 @@ public class ChannelManager implements MessageHandler
 		PacketGlobalForwardRequest pgf = new PacketGlobalForwardRequest(true, bindAddress, bindPort);
 		tm.sendMessage(pgf.getPayload());
 
-
 		log.debug("Requesting a remote forwarding ('" + bindAddress + "', " + bindPort + ")");
 
 		try
@@ -541,7 +561,6 @@ public class ChannelManager implements MessageHandler
 		PacketGlobalCancelForwardRequest pgcf = new PacketGlobalCancelForwardRequest(true, rfd.bindAddress,
 				rfd.bindPort);
 		tm.sendMessage(pgcf.getPayload());
-
 
 		log.debug("Requesting cancelation of remote forward ('" + rfd.bindAddress + "', " + rfd.bindPort + ")");
 
@@ -595,7 +614,6 @@ public class ChannelManager implements MessageHandler
 			c.localID = addChannel(c);
 			// end of synchronized block forces the writing out to main memory
 		}
-
 
 		log.debug("Sending SSH_MSG_CHANNEL_OPEN (Channel " + c.localID + ")");
 
@@ -662,7 +680,6 @@ public class ChannelManager implements MessageHandler
 				throw new IOException("Cannot request X11 on this channel (" + c.getReasonClosed() + ")");
 			tm.sendMessage(psr.getPayload());
 		}
-
 
 		log.debug("Requesting X11 forwarding (Channel " + c.localID + "/" + c.remoteID + ")");
 
@@ -736,7 +753,6 @@ public class ChannelManager implements MessageHandler
 			tm.sendMessage(sm.getPayload(charsetName));
 		}
 
-
 		log.debug("Executing command (channel " + c.localID + ", '" + cmd + "')");
 
 		try
@@ -800,7 +816,6 @@ public class ChannelManager implements MessageHandler
 		if (len != (msglen - 13))
 			throw new IOException("SSH_MSG_CHANNEL_EXTENDED_DATA message has wrong len (calculated " + (msglen - 13)
 					+ ", got " + len + ")");
-
 
 		log.debug("Got SSH_MSG_CHANNEL_EXTENDED_DATA (channel " + id + ", " + len + ")");
 
@@ -1026,7 +1041,6 @@ public class ChannelManager implements MessageHandler
 
 			if (increment > 0)
 			{
-
 				log.debug("Sending SSH_MSG_CHANNEL_WINDOW_ADJUST (channel " + localID + ", " + increment + ")");
 
 				synchronized (c.channelSendLock)
@@ -1074,7 +1088,6 @@ public class ChannelManager implements MessageHandler
 		if (len != (msglen - 9))
 			throw new IOException("SSH_MSG_CHANNEL_DATA message has wrong len (calculated " + (msglen - 9) + ", got "
 					+ len + ")");
-
 
 		log.debug("Got SSH_MSG_CHANNEL_DATA (channel " + id + ", " + len + ")");
 
@@ -1152,7 +1165,6 @@ public class ChannelManager implements MessageHandler
 
 					tm.sendAsynchronousMessage(pcof.getPayload());
 
-
 					log.warning("Unexpected X11 request, denying it!");
 
 					return;
@@ -1207,7 +1219,6 @@ public class ChannelManager implements MessageHandler
 
 				tm.sendAsynchronousMessage(pcof.getPayload());
 
-
 				log.debug("Unexpected forwarded-tcpip request, denying it!");
 
 				return;
@@ -1236,6 +1247,45 @@ public class ChannelManager implements MessageHandler
 			return;
 		}
 
+		if ((server_state != null) && ("session".equals(channelType)))
+		{
+			ServerConnectionCallback cb = null;
+			
+			synchronized (server_state)
+			{
+				cb = server_state.cb_conn;
+			}
+			
+			if (cb == null)
+			{
+				tm.sendAsynchronousMessage(new PacketChannelOpenFailure(remoteID, Packets.SSH_OPEN_ADMINISTRATIVELY_PROHIBITED,
+						"Sessions are currently not enabled", "en").getPayload());
+				
+				return;
+			}
+			
+			final Channel c = new Channel(this);
+
+			synchronized (c)
+			{
+				c.remoteID = remoteID;
+				c.remoteWindow = remoteWindow & 0xFFFFffffL; /* convert UINT32 to long */
+				c.remoteMaxPacketSize = remoteMaxPacketSize;
+				c.localID = addChannel(c);
+				c.state = Channel.STATE_OPEN;
+				c.ss = new ServerSessionImpl(c);
+			}
+
+			PacketChannelOpenConfirmation pcoc = new PacketChannelOpenConfirmation(c.remoteID, c.localID,
+					c.localWindow, c.localMaxPacketSize);
+
+			tm.sendAsynchronousMessage(pcoc.getPayload());
+
+			c.ss.sscb = cb.acceptSession(c.ss);
+
+			return;
+		}
+
 		/* Tell the server that we have no idea what it is talking about */
 
 		PacketChannelOpenFailure pcof = new PacketChannelOpenFailure(remoteID, Packets.SSH_OPEN_UNKNOWN_CHANNEL_TYPE,
@@ -1259,16 +1309,26 @@ public class ChannelManager implements MessageHandler
 		if (c == null)
 			throw new IOException("Unexpected SSH_MSG_CHANNEL_REQUEST message for non-existent channel " + id);
 
+		ServerSessionImpl server_session = null;
+
+		if (server_state != null)
+		{
+			synchronized (c)
+			{
+				server_session = c.ss;
+			}
+		}
+
 		String type = tr.readString("US-ASCII");
 		boolean wantReply = tr.readBoolean();
-
 
 		log.debug("Got SSH_MSG_CHANNEL_REQUEST (channel " + id + ", '" + type + "')");
 
 		if (type.equals("exit-status"))
 		{
 			if (wantReply != false)
-				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message, 'want reply' is true");
+				throw new IOException(
+						"Badly formatted SSH_MSG_CHANNEL_REQUEST exit-status message, 'want reply' is true");
 
 			int exit_status = tr.readUINT32();
 
@@ -1281,16 +1341,16 @@ public class ChannelManager implements MessageHandler
 				c.notifyAll();
 			}
 
-
 			log.debug("Got EXIT STATUS (channel " + id + ", status " + exit_status + ")");
 
 			return;
 		}
 
-		if (type.equals("exit-signal"))
+		if ((server_state == null) && (type.equals("exit-signal")))
 		{
 			if (wantReply != false)
-				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message, 'want reply' is true");
+				throw new IOException(
+						"Badly formatted SSH_MSG_CHANNEL_REQUEST exit-signal message, 'want reply' is true");
 
 			String signame = tr.readString("US-ASCII");
 			tr.readBoolean();
@@ -1306,9 +1366,97 @@ public class ChannelManager implements MessageHandler
 				c.notifyAll();
 			}
 
-
 			log.debug("Got EXIT SIGNAL (channel " + id + ", signal " + signame + ")");
 
+			return;
+		}
+
+		if ((server_session != null) && (type.equals("pty-req")))
+		{
+			PtySettings pty = new PtySettings();
+
+			pty.term = tr.readString();
+			pty.term_width_characters = tr.readUINT32();
+			pty.term_height_characters = tr.readUINT32();
+			pty.term_width_pixels = tr.readUINT32();
+			pty.term_height_pixels = tr.readUINT32();
+			pty.terminal_modes = tr.readByteString();
+
+			if (tr.remain() != 0)
+				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message");
+			
+			boolean success = false;
+			ServerSessionCallback sscb = server_session.getServerSessionCallback();
+
+			if (sscb != null)
+				success = sscb.allowPtyReq(server_session, pty);
+
+			if (wantReply)
+			{
+				if (success)
+				{
+					tm.sendAsynchronousMessage(new PacketChannelSuccess(c.remoteID).getPayload());
+					sscb.handlePtyReq(server_session, pty);
+				}
+				else
+				{
+					tm.sendAsynchronousMessage(new PacketChannelFailure(c.remoteID).getPayload());
+				}			
+			}
+			return;
+		}
+
+		if ((server_session != null) && (type.equals("shell")))
+		{
+			if (tr.remain() != 0)
+				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message");
+			
+			boolean success = false;
+			ServerSessionCallback sscb = server_session.getServerSessionCallback();
+
+			if (sscb != null)
+				success = sscb.allowShell(server_session);
+
+			if (wantReply)
+			{
+				if (success)
+				{
+					tm.sendAsynchronousMessage(new PacketChannelSuccess(c.remoteID).getPayload());
+					sscb.handleShell(server_session);
+				}
+				else
+				{
+					tm.sendAsynchronousMessage(new PacketChannelFailure(c.remoteID).getPayload());
+				}
+			}
+			return;
+		}
+		
+		if ((server_session != null) && (type.equals("exec")))
+		{
+			String command = tr.readString();
+			
+			if (tr.remain() != 0)
+				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message");
+			
+			boolean success = false;
+			ServerSessionCallback sscb = server_session.getServerSessionCallback();
+
+			if (sscb != null)
+				success = sscb.allowExec(server_session, command);
+
+			if (wantReply)
+			{
+				if (success)
+				{
+					tm.sendAsynchronousMessage(new PacketChannelSuccess(c.remoteID).getPayload());
+					sscb.handleExec(server_session, command);
+				}
+				else
+				{
+					tm.sendAsynchronousMessage(new PacketChannelFailure(c.remoteID).getPayload());
+				}
+			}
 			return;
 		}
 
@@ -1318,17 +1466,8 @@ public class ChannelManager implements MessageHandler
 
 		if (wantReply)
 		{
-			byte[] reply = new byte[5];
-
-			reply[0] = Packets.SSH_MSG_CHANNEL_FAILURE;
-			reply[1] = (byte) (c.remoteID >> 24);
-			reply[2] = (byte) (c.remoteID >> 16);
-			reply[3] = (byte) (c.remoteID >> 8);
-			reply[4] = (byte) (c.remoteID);
-
-			tm.sendAsynchronousMessage(reply);
+			tm.sendAsynchronousMessage(new PacketChannelFailure(c.remoteID).getPayload());
 		}
-
 
 		log.debug("Channel request '" + type + "' is not known, ignoring it");
 	}
@@ -1350,7 +1489,6 @@ public class ChannelManager implements MessageHandler
 			c.EOF = true;
 			c.notifyAll();
 		}
-
 
 		log.debug("Got SSH_MSG_CHANNEL_EOF (channel " + id + ")");
 	}
@@ -1379,7 +1517,6 @@ public class ChannelManager implements MessageHandler
 			c.notifyAll();
 		}
 
-
 		log.debug("Got SSH_MSG_CHANNEL_CLOSE (channel " + id + ")");
 	}
 
@@ -1401,7 +1538,6 @@ public class ChannelManager implements MessageHandler
 			c.notifyAll();
 		}
 
-
 		log.debug("Got SSH_MSG_CHANNEL_SUCCESS (channel " + id + ")");
 	}
 
@@ -1422,7 +1558,6 @@ public class ChannelManager implements MessageHandler
 			c.failedCounter++;
 			c.notifyAll();
 		}
-
 
 		log.debug("Got SSH_MSG_CHANNEL_FAILURE (channel " + id + ")");
 	}
@@ -1449,7 +1584,6 @@ public class ChannelManager implements MessageHandler
 			c.state = Channel.STATE_OPEN;
 			c.notifyAll();
 		}
-
 
 		log.debug("Got SSH_MSG_CHANNEL_OPEN_CONFIRMATION (channel " + sm.recipientChannelID + " / remote: "
 				+ sm.senderChannelID + ")");
@@ -1514,7 +1648,6 @@ public class ChannelManager implements MessageHandler
 			c.notifyAll();
 		}
 
-
 		log.debug("Got SSH_MSG_CHANNEL_OPEN_FAILURE (channel " + id + ")");
 	}
 
@@ -1538,7 +1671,6 @@ public class ChannelManager implements MessageHandler
 
 		/* We do not clean up the requestName String - that is OK for debug */
 
-
 		log.debug("Got SSH_MSG_GLOBAL_REQUEST (" + requestName + ")");
 	}
 
@@ -1550,7 +1682,6 @@ public class ChannelManager implements MessageHandler
 			channels.notifyAll();
 		}
 
-
 		log.debug("Got SSH_MSG_REQUEST_SUCCESS");
 	}
 
@@ -1561,7 +1692,6 @@ public class ChannelManager implements MessageHandler
 			globalFailedCounter++;
 			channels.notifyAll();
 		}
-
 
 		log.debug("Got SSH_MSG_REQUEST_FAILURE");
 	}

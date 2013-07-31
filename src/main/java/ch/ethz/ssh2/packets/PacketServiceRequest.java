@@ -23,6 +23,11 @@ public class PacketServiceRequest
 		this.serviceName = serviceName;
 	}
 
+	public String getServiceName()
+	{
+		return serviceName;
+	}
+	
 	public PacketServiceRequest(byte payload[], int off, int len) throws IOException
 	{
 		this.payload = new byte[len];

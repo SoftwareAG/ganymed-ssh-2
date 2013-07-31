@@ -9,6 +9,8 @@ import ch.ethz.ssh2.crypto.dh.DhExchange;
 import ch.ethz.ssh2.crypto.dh.DhGroupExchange;
 import java.math.BigInteger;
 import ch.ethz.ssh2.packets.PacketKexInit;
+import ch.ethz.ssh2.signature.DSAPrivateKey;
+import ch.ethz.ssh2.signature.RSAPrivateKey;
 
 /**
  * KexState.
@@ -26,9 +28,12 @@ public class KexState
 	public BigInteger K;
 	public byte[] H;
 	
-	public byte[] hostkey;
+	public byte[] remote_hostkey;
 	
 	public DhExchange dhx;
 	public DhGroupExchange dhgx;
 	public DHGexParameters dhgexParameters;
+	
+	public DSAPrivateKey local_dsa_key;
+	public RSAPrivateKey local_rsa_key;
 }

@@ -56,6 +56,9 @@ public class Channel
 	final ChannelInputStream stdoutStream;
 	final ChannelInputStream stderrStream;
 
+	// In case this channel belongs to a server-side session.
+	ServerSessionImpl ss;
+
 	// These two fields will only be written while the Channel is in state
 	// STATE_OPENING.
 	// The code makes sure that the two fields are written out when the state is

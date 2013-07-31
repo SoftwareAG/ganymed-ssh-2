@@ -5,7 +5,7 @@
     <groupId>com.googlecode.ganymed-ssh-2</groupId>
     <artifactId>ganymed-ssh-2</artifactId>
     <packaging>jar</packaging>
-    <version>260</version>
+    <version>260beta1</version>
     <name>ganymed-ssh-2</name>
     <developers>
         <developer>

@@ -2,6 +2,7 @@
  * Copyright (c) 2006-2011 Christian Plattner. All rights reserved.
  * Please refer to the LICENSE.txt for licensing details.
  */
+
 package ch.ethz.ssh2;
 
 import java.io.CharArrayWriter;
@@ -45,9 +46,13 @@ import ch.ethz.ssh2.util.TimeoutService.TimeoutToken;
 public class Connection
 {
 	/**
-	 * The identifier presented to the SSH-2 server.
+	 * The identifier presented to the SSH-2 server. This is the same
+	 * as the "softwareversion" defined in RFC 4253.
+	 * <p/>
+	 * <b>NOTE: As per the RFC, the "softwareversion" string MUST consist of printable
+	 * US-ASCII characters, with the exception of whitespace characters and the minus sign (-).</b>
 	 */
-	private String identification = "Ganymed-" + Version.getSpecification();
+	private String softwareversion = "Ganymed_260beta1";
 
 	/* Will be used to generate all random data needed for the current connection.
 	 * Note: SecureRandom.nextBytes() is thread safe.
@@ -134,11 +139,24 @@ public class Connection
 		this.port = port;
 	}
 
-	public Connection(String hostname, int port, String identification)
+	/**
+	 * Prepares a fresh <code>Connection</code> object which can then be used
+	 * to establish a connection to the specified SSH-2 server.
+	 *
+	 * @param hostname
+	 *            the host where we later want to connect to.
+	 * @param port
+	 *            port on the server, normally 22.
+	 * @param softwareversion
+	 * 			Allows you to set a custom "softwareversion" string as defined in RFC 4253.
+	 * 			<b>NOTE: As per the RFC, the "softwareversion" string MUST consist of printable
+	 *          US-ASCII characters, with the exception of whitespace characters and the minus sign (-).</b>
+	 */
+	public Connection(String hostname, int port, String softwareversion)
 	{
 		this.hostname = hostname;
 		this.port = port;
-        this.identification = identification;
+		this.softwareversion = softwareversion;
 	}
 
 	/**
@@ -528,7 +546,7 @@ public class Connection
 		close(t, false);
 	}
 
-    public void close(Throwable t, boolean hard)
+	public synchronized void close(Throwable t, boolean hard)
 	{
 		if (cm != null)
 			cm.closeAllChannels();
@@ -656,8 +674,8 @@ public class Connection
 
 		final TimeoutState state = new TimeoutState();
 
-		tm = new TransportManager(hostname, port);
-        tm.setSoTimeout(connectTimeout);
+		tm = new TransportManager();
+		tm.setSoTimeout(connectTimeout);
 		tm.setConnectionMonitors(connectionMonitors);
 
 		/* Make sure that the runnable below will observe the new value of "tm"
@@ -704,8 +722,8 @@ public class Connection
 
 			try
 			{
-				tm.initialize(identification, cryptoWishList, verifier, dhgexpara, connectTimeout,
-                        getOrCreateSecureRND(), proxyData);
+				tm.clientInit(hostname, port, softwareversion, cryptoWishList, verifier, dhgexpara, connectTimeout,
+						getOrCreateSecureRND(), proxyData);
 			}
 			catch (SocketTimeoutException se)
 			{
@@ -884,7 +902,7 @@ public class Connection
 		if (tm == null)
 			throw new IllegalStateException("You need to establish a connection first.");
 
-		tm.forceKeyExchange(cryptoWishList, dhgexpara);
+		tm.forceKeyExchange(cryptoWishList, dhgexpara, null, null);
 	}
 
 	/**

@@ -72,7 +72,10 @@ public class BasicWithHTTPProxy
 			{
 				String line = br.readLine();
 				if (line == null)
+				{
+					br.close();
 					break;
+				}
 				System.out.println(line);
 			}
 

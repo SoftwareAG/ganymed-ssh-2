@@ -17,12 +17,12 @@ public class Logger
 
 	private java.util.logging.Logger delegate;
 
-	public static Logger getLogger(Class x)
+	public static Logger getLogger(Class<?> x)
 	{
 		return new Logger(x);
 	}
 
-	public Logger(Class x)
+	public Logger(Class<?> x)
 	{
 		this.delegate = java.util.logging.Logger.getLogger(x.getName());
 	}
