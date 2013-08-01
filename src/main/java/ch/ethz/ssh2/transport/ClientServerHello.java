@@ -82,7 +82,7 @@ public class ClientServerHello
 		bo.write(StringEncoder.GetBytes(localIdentifier + "\r\n"));
 		bo.flush();
 
-		byte[] remoteData = new byte[512];
+		byte[] remoteData = new byte[1024];
 
 		for (int i = 0; i < 50; i++)
 		{
