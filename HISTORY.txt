@@ -43,6 +43,12 @@ build260beta1, 2013-08-01
 
 - Option to pass charset for commands executed on the remote machine.
 
+- Add method to get local socket address from LocalPortForwarder.
+
+- Allow to remove connection monitors.
+
+- Add a connection monitor only if it was not added yet.
+
 build251beta1, 2010-08-23:
 
 - Due to the slightly changed semantics of Thread.interrupt() and Object.wait() in JDK 6,

@@ -517,21 +517,44 @@ public class Connection
 	 * a successful connect(), but the connection has died in the mean time. Then,
 	 * your connection monitor won't be notified.)
 	 * <p>
-	 * You can add as many monitors as you like.
+	 * You can add as many monitors as you like. If a monitor has already been added, then
+	 * this method does nothing.
 	 *
 	 * @see ConnectionMonitor
 	 *
-	 * @param cmon An object implementing the <code>ConnectionMonitor</code> interface.
+	 * @param cmon An object implementing the {@link ConnectionMonitor} interface.
 	 */
 	public synchronized void addConnectionMonitor(ConnectionMonitor cmon)
 	{
 		if (cmon == null)
 			throw new IllegalArgumentException("cmon argument is null");
 
-		connectionMonitors.add(cmon);
+		if (!connectionMonitors.contains(cmon))
+		{
+			connectionMonitors.add(cmon);
+
+			if (tm != null)
+				tm.setConnectionMonitors(connectionMonitors);
+		}
+	}
+
+	/**
+	 * Remove a {@link ConnectionMonitor} from this connection.
+	 * 
+	 * @param cmon
+	 * @return whether the monitor could be removed
+	 */
+	public synchronized boolean removeConnectionMonitor(ConnectionMonitor cmon)
+	{
+		if (cmon == null)
+			throw new IllegalArgumentException("cmon argument is null");
+
+		boolean existed = connectionMonitors.remove(cmon);
 
 		if (tm != null)
 			tm.setConnectionMonitors(connectionMonitors);
+
+		return existed;
 	}
 
 	/**
