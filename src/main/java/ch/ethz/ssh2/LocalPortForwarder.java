@@ -1,11 +1,13 @@
 /*
- * Copyright (c) 2006-2011 Christian Plattner. All rights reserved.
+ * Copyright (c) 2006-2013 Christian Plattner. All rights reserved.
  * Please refer to the LICENSE.txt for licensing details.
  */
+
 package ch.ethz.ssh2;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 
 import ch.ethz.ssh2.channel.ChannelManager;
 import ch.ethz.ssh2.channel.LocalAcceptThread;
@@ -21,13 +23,13 @@ import ch.ethz.ssh2.channel.LocalAcceptThread;
  */
 public class LocalPortForwarder
 {
-	ChannelManager cm;
+	final ChannelManager cm;
 
-	String host_to_connect;
+	final String host_to_connect;
 
-	int port_to_connect;
+	final int port_to_connect;
 
-	LocalAcceptThread lat;
+	final LocalAcceptThread lat;
 
 	LocalPortForwarder(ChannelManager cm, int local_port, String host_to_connect, int port_to_connect)
 			throws IOException
@@ -51,6 +53,15 @@ public class LocalPortForwarder
 		lat = new LocalAcceptThread(cm, addr, host_to_connect, port_to_connect);
 		lat.setDaemon(true);
 		lat.start();
+	}
+
+	/**
+	 * Return the local socket address of the {@link ServerSocket} used to accept connections.
+	 * @return
+	 */
+	public InetSocketAddress getLocalSocketAddress()
+	{
+		return (InetSocketAddress) lat.getServerSocket().getLocalSocketAddress();
 	}
 
 	/**

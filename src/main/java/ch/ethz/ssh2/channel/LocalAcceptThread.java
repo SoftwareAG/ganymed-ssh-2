@@ -44,6 +44,11 @@ public class LocalAcceptThread extends Thread implements IChannelWorkerThread
 		ss.bind(localAddress);
 	}
 
+	public ServerSocket getServerSocket()
+	{
+		return ss;
+	}
+	
 	@Override
 	public void run()
 	{
