@@ -9,6 +9,7 @@ import java.net.Socket;
 import java.security.SecureRandom;
 import java.util.Random;
 
+import ch.ethz.ssh2.AuthenticationResult;
 import ch.ethz.ssh2.ConnectionInfo;
 import ch.ethz.ssh2.PtySettings;
 import ch.ethz.ssh2.ServerAuthenticationCallback;
@@ -24,15 +25,15 @@ public class BasicServer implements ServerAuthenticationCallback, ServerConnecti
 	private static final int SERVER_PORT = 2222;
 	private static final String AUTH_USER = "root";
 	private static final String AUTH_PASS = "kensentme";
-	
+
 	public static void main(String[] args) throws IOException
 	{
 		BasicServer bs = new BasicServer();
 		bs.acceptSingleConnection();
 	}
 
-	private static  ServerConnection conn = null;
-	
+	private static ServerConnection conn = null;
+
 	private void acceptSingleConnection() throws IOException
 	{
 		System.out.println("Generating RSA private key...");
@@ -55,13 +56,13 @@ public class BasicServer implements ServerAuthenticationCallback, ServerConnecti
 
 		/* Accept a connection */
 
-		System.out.println("Waiting for one (1) connection on port "+SERVER_PORT+"...");
+		System.out.println("Waiting for one (1) connection on port " + SERVER_PORT + "...");
 		System.out.flush();
 
 		ServerSocket ss = new ServerSocket(SERVER_PORT);
 		Socket s = ss.accept();
 		ss.close(); // We only accept one connection and immediately close the server socket
-		
+
 		/* Wrap the established socket with a SSH-2 connection */
 
 		conn = new ServerConnection(s);
@@ -73,7 +74,7 @@ public class BasicServer implements ServerAuthenticationCallback, ServerConnecti
 
 		System.out.println("Doing key exchange with client...");
 		System.out.flush();
-		
+
 		conn.connect();
 
 		/* Show some information about the connection */
@@ -88,11 +89,11 @@ public class BasicServer implements ServerAuthenticationCallback, ServerConnecti
 		System.out.println("S2C Crypto Algo:      " + info.serverToClientCryptoAlgorithm);
 		System.out.println("S2C MAC Algo:         " + info.serverToClientMACAlgorithm);
 		System.out.flush();
-		
+
 		/* The connection is working, have fun and force a key exchange every few
 		 * seconds to test whether the client is implemented correctly...
 		 */
-		
+
 		while (true)
 		{
 			try
@@ -102,10 +103,10 @@ public class BasicServer implements ServerAuthenticationCallback, ServerConnecti
 			catch (InterruptedException e1)
 			{
 			}
-			
+
 			System.out.println("Forcing key exchange with client...");
 			System.out.flush();
-			
+
 			conn.forceKeyExchange();
 		}
 	}
@@ -115,26 +116,21 @@ public class BasicServer implements ServerAuthenticationCallback, ServerConnecti
 		SimpleServerSessionCallback cb = new SimpleServerSessionCallback()
 		{
 			@Override
-			public boolean allowPtyReq(ServerSession ss, PtySettings pty) throws IOException
+			public Runnable requestPtyReq(final ServerSession ss, final PtySettings pty) throws IOException
 			{
-				return true;
+				return new Runnable()
+				{	
+					public void run()
+					{
+						System.out.println("Client requested " + pty.term + " pty");
+					}
+				};
 			}
 
 			@Override
-			public void handlePtyReq(ServerSession ss, PtySettings pty) throws IOException
+			public Runnable requestShell(final ServerSession ss) throws IOException
 			{
-			}
-
-			@Override
-			public boolean allowShell(ServerSession ss) throws IOException
-			{
-				return true;
-			}
-
-			@Override
-			public void handleShell(final ServerSession ss) throws IOException
-			{
-				Thread tr = new Thread(new Runnable()
+				return new Runnable()
 				{
 					public void run()
 					{
@@ -159,9 +155,7 @@ public class BasicServer implements ServerAuthenticationCallback, ServerConnecti
 							e.printStackTrace();
 						}
 					}
-				});
-				tr.setDaemon(true);
-				tr.start();
+				};
 			}
 		};
 
@@ -179,20 +173,23 @@ public class BasicServer implements ServerAuthenticationCallback, ServerConnecti
 				ServerAuthenticationCallback.METHOD_PUBLICKEY };
 	}
 
-	public boolean authenticateWithNone(ServerConnection sc, String username)
+	public AuthenticationResult authenticateWithNone(ServerConnection sc, String username)
 	{
-		return false;
+		return AuthenticationResult.FAILURE;
 	}
 
-	public boolean authenticateWithPassword(ServerConnection sc, String username, String password)
+	public AuthenticationResult authenticateWithPassword(ServerConnection sc, String username, String password)
 	{
-		return AUTH_USER.equals(username) && AUTH_PASS.equals(password);
+		if (AUTH_USER.equals(username) && AUTH_PASS.equals(password))
+			return AuthenticationResult.SUCCESS;
+
+		return AuthenticationResult.FAILURE;
 	}
 
-	public boolean authenticateWithPublicKey(ServerConnection sc, String username, String algorithm, byte[] publickey,
-			byte[] signature)
+	public AuthenticationResult authenticateWithPublicKey(ServerConnection sc, String username, String algorithm,
+			byte[] publickey, byte[] signature)
 	{
-		/* Isn't that a bit unfair? We offer public key authentication, but deny every attempt =) */
-		return false;
+		/* Isn't that a bit unfair? We offer public key authentication, but then deny every attempt =) */
+		return AuthenticationResult.FAILURE;
 	}
 }

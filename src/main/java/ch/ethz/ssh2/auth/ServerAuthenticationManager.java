@@ -3,6 +3,7 @@ package ch.ethz.ssh2.auth;
 
 import java.io.IOException;
 
+import ch.ethz.ssh2.AuthenticationResult;
 import ch.ethz.ssh2.ServerAuthenticationCallback;
 import ch.ethz.ssh2.channel.ChannelManager;
 import ch.ethz.ssh2.packets.PacketServiceAccept;
@@ -25,33 +26,35 @@ public class ServerAuthenticationManager implements MessageHandler
 		state.tm.registerMessageHandler(this, 0, 255);
 	}
 
-	private void success() throws IOException
+	private void sendresult(AuthenticationResult result) throws IOException
 	{
-		PacketUserauthSuccess pus = new PacketUserauthSuccess();
-		state.tm.sendAsynchronousMessage(pus.getPayload());
+		if (AuthenticationResult.SUCCESS == result)
+		{
+			PacketUserauthSuccess pus = new PacketUserauthSuccess();
+			state.tm.sendAsynchronousMessage(pus.getPayload());
 
-		state.tm.removeMessageHandler(this, 0, 255);
-		state.tm.registerMessageHandler(this, 50, 79);
+			state.tm.removeMessageHandler(this, 0, 255);
+			state.tm.registerMessageHandler(this, 50, 79);
 
-		state.cm = new ChannelManager(state);
+			state.cm = new ChannelManager(state);
 
-		state.flag_auth_completed = true;
-	}
+			state.flag_auth_completed = true;
 
-	private void fail() throws IOException
-	{
-		ServerAuthenticationCallback cb = state.cb_auth;
+		}
+		else
+		{
+			String[] remaining_methods = null;
 
-		String[] remaining_methods = null;
+			if (state.cb_auth != null)
+				remaining_methods = state.cb_auth.getRemainingAuthMethods(state.conn);
 
-		if (cb != null)
-			remaining_methods = cb.getRemainingAuthMethods(state.conn);
+			if (remaining_methods == null)
+				remaining_methods = new String[0];
 
-		if (remaining_methods == null)
-			remaining_methods = new String[0];
-
-		PacketUserauthFailure puf = new PacketUserauthFailure(remaining_methods, false);
-		state.tm.sendAsynchronousMessage(puf.getPayload());
+			PacketUserauthFailure puf = new PacketUserauthFailure(remaining_methods,
+					AuthenticationResult.PARTIAL_SUCCESS == result);
+			state.tm.sendAsynchronousMessage(puf.getPayload());
+		}
 	}
 
 	public void handleMessage(byte[] msg, int msglen) throws IOException
@@ -103,39 +106,39 @@ public class ServerAuthenticationManager implements MessageHandler
 
 			if (!"ssh-connection".equals(service))
 			{
-				fail();
+				sendresult(AuthenticationResult.FAILURE);
 				return;
 			}
 
 			if ("none".equals(method))
 			{
-				if ((cb != null) && (cb.authenticateWithNone(state.conn, username)))
+				if (cb != null)
 				{
-					success();
+					sendresult(cb.authenticateWithNone(state.conn, username));
 					return;
 				}
 			}
-			
+
 			if ("password".equals(method))
 			{
 				boolean flag_change_pass = tr.readBoolean();
-				
+
 				if (flag_change_pass)
 				{
-					fail();
+					sendresult(AuthenticationResult.FAILURE);
 					return;
 				}
-				
+
 				String password = tr.readString("UTF-8");
-				
-				if ((cb != null) && (cb.authenticateWithPassword(state.conn, username, password)))
+
+				if (cb != null)
 				{
-					success();
+					sendresult(cb.authenticateWithPassword(state.conn, username, password));
 					return;
 				}
 			}
-			
-			fail();
+
+			sendresult(AuthenticationResult.FAILURE);
 			return;
 		}
 

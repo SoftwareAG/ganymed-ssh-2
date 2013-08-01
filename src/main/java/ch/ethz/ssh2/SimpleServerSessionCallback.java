@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2006-2013 Christian Plattner. All rights reserved.
+ * Please refer to the LICENSE.txt for licensing details.
+ */
 
 package ch.ethz.ssh2;
 
@@ -16,52 +20,41 @@ import java.io.IOException;
  */
 public class SimpleServerSessionCallback implements ServerSessionCallback
 {
-	public boolean allowPtyReq(ServerSession ss, PtySettings pty) throws IOException
+	public Runnable requestShell(ServerSession ss) throws IOException
 	{
-		return false;
+		return null;
 	}
 
-	public void handlePtyReq(ServerSession ss, PtySettings pty) throws IOException
+	public Runnable requestExec(ServerSession ss, String command) throws IOException
 	{
+		return null;
 	}
 
-	public boolean allowEnv(ServerSession ss, String name, String value) throws IOException
+	public Runnable requestSubsystem(ServerSession ss, String subsystem) throws IOException
 	{
-		return true;
+		return null;
+	}
+	
+	public Runnable requestPtyReq(ServerSession ss, PtySettings pty) throws IOException
+	{
+		return null;
 	}
 
-	public void handleEnv(ServerSession ss, String name, String value) throws IOException
+	/**
+	 * By default, silently ignore passwd environment variables.
+	 */
+	public Runnable requestEnv(ServerSession ss, String name, String value) throws IOException
 	{
+		return new Runnable()
+		{	
+			public void run()
+			{
+				/* Do nothing */
+			}
+		};
 	}
 
-	public boolean allowShell(ServerSession ss) throws IOException
-	{
-		return false;
-	}
-
-	public void handleShell(ServerSession ss) throws IOException
-	{
-	}
-
-	public boolean allowExec(ServerSession ss, String command) throws IOException
-	{
-		return false;
-	}
-
-	public void handleExec(ServerSession ss, String command) throws IOException
-	{
-	}
-
-	public boolean allowSubsystem(ServerSession ss, String subsystem) throws IOException
-	{
-		return false;
-	}
-
-	public void handleSubsystem(ServerSession ss, String subsystem) throws IOException
-	{
-	}
-
-	public void handleWindowChange(ServerSession ss, int term_width_columns, int term_height_rows,
+	public void requestWindowChange(ServerSession ss, int term_width_columns, int term_height_rows,
 			int term_width_pixels, int term_height_pixels) throws IOException
 	{
 	}

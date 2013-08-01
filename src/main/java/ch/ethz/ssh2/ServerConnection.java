@@ -136,6 +136,16 @@ public class ServerConnection
 	}
 
 	/**
+	 * Retrieve the underlying socket.
+	 * 
+	 * @return the socket that has been passed to the constructor.
+	 */
+	public Socket getSocket()
+	{
+		return state.s;
+	}
+
+	/**
 	 * Force an asynchronous key re-exchange (the call does not block). The
 	 * latest values set for MAC, Cipher and DH group exchange parameters will
 	 * be used. If a key exchange is currently in progress, then this method has
@@ -322,7 +332,7 @@ public class ServerConnection
 			state.cb_auth = cb;
 		}
 	}
-	
+
 	/**
 	 * Close the connection to the SSH-2 server. All assigned sessions will be
 	 * closed, too. Can be called at any time. Don't forget to call this once
@@ -341,12 +351,11 @@ public class ServerConnection
 		{
 			if (state.cm != null)
 				state.cm.closeAllChannels();
-			
+
 			if (state.tm != null)
 			{
 				state.tm.close(t, hard == false);
 			}
 		}
-
 	}
 }

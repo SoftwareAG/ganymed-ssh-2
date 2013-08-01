@@ -1297,6 +1297,13 @@ public class ChannelManager implements MessageHandler
 		log.warning("The peer tried to open an unsupported channel type (" + channelType + ")");
 	}
 
+	/* Starts the given runnable in a foreground (non-daemon) thread */
+	private void runAsync(Runnable r)
+	{
+		Thread t = new Thread(r);
+		t.start();		
+	}
+	
 	public void msgChannelRequest(byte[] msg, int msglen) throws IOException
 	{
 		TypesReader tr = new TypesReader(msg, 0, msglen);
@@ -1385,24 +1392,30 @@ public class ChannelManager implements MessageHandler
 			if (tr.remain() != 0)
 				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message");
 			
-			boolean success = false;
+			Runnable run_after_sending_success = null;
+			
 			ServerSessionCallback sscb = server_session.getServerSessionCallback();
 
 			if (sscb != null)
-				success = sscb.allowPtyReq(server_session, pty);
+				run_after_sending_success = sscb.requestPtyReq(server_session, pty);
 
 			if (wantReply)
 			{
-				if (success)
+				if (run_after_sending_success != null)
 				{
 					tm.sendAsynchronousMessage(new PacketChannelSuccess(c.remoteID).getPayload());
-					sscb.handlePtyReq(server_session, pty);
 				}
 				else
 				{
 					tm.sendAsynchronousMessage(new PacketChannelFailure(c.remoteID).getPayload());
 				}			
 			}
+			
+			if (run_after_sending_success != null)
+			{
+				runAsync(run_after_sending_success);
+			}
+			
 			return;
 		}
 
@@ -1411,24 +1424,29 @@ public class ChannelManager implements MessageHandler
 			if (tr.remain() != 0)
 				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message");
 			
-			boolean success = false;
+			Runnable run_after_sending_success = null;
 			ServerSessionCallback sscb = server_session.getServerSessionCallback();
 
 			if (sscb != null)
-				success = sscb.allowShell(server_session);
+				run_after_sending_success = sscb.requestShell(server_session);
 
 			if (wantReply)
 			{
-				if (success)
+				if (run_after_sending_success != null)
 				{
 					tm.sendAsynchronousMessage(new PacketChannelSuccess(c.remoteID).getPayload());
-					sscb.handleShell(server_session);
 				}
 				else
 				{
 					tm.sendAsynchronousMessage(new PacketChannelFailure(c.remoteID).getPayload());
 				}
 			}
+			
+			if (run_after_sending_success != null)
+			{
+				runAsync(run_after_sending_success);
+			}
+			
 			return;
 		}
 		
@@ -1439,24 +1457,29 @@ public class ChannelManager implements MessageHandler
 			if (tr.remain() != 0)
 				throw new IOException("Badly formatted SSH_MSG_CHANNEL_REQUEST message");
 			
-			boolean success = false;
+			Runnable run_after_sending_success = null;
 			ServerSessionCallback sscb = server_session.getServerSessionCallback();
 
 			if (sscb != null)
-				success = sscb.allowExec(server_session, command);
+				run_after_sending_success = sscb.requestExec(server_session, command);
 
 			if (wantReply)
 			{
-				if (success)
+				if (run_after_sending_success != null)
 				{
 					tm.sendAsynchronousMessage(new PacketChannelSuccess(c.remoteID).getPayload());
-					sscb.handleExec(server_session, command);
 				}
 				else
 				{
 					tm.sendAsynchronousMessage(new PacketChannelFailure(c.remoteID).getPayload());
 				}
 			}
+			
+			if (run_after_sending_success != null)
+			{
+				runAsync(run_after_sending_success);
+			}
+			
 			return;
 		}
 
