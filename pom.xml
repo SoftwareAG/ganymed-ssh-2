@@ -42,15 +42,20 @@
         <connection>scm:svn:https://ganymed-ssh-2.googlecode.com/svn/trunk/</connection>
         <developerConnection>scm:svn:https://ganymed-ssh-2.googlecode.com/svn/trunk/</developerConnection>
     </scm>
-    <repositories/>
-    <pluginRepositories/>
-    <dependencyManagement/>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>4.11</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.11</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
     <build>
@@ -102,6 +107,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.9</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
