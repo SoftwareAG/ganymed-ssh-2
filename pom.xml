@@ -10,7 +10,7 @@
     <groupId>ch.ethz.ssh2</groupId>
     <artifactId>ganymed-ssh-2</artifactId>
     <packaging>jar</packaging>
-    <version>2.0-SNAPSHOT</version>
+    <version>3.0-SNAPSHOT</version>
     <name>ganymed-ssh-2</name>
     <description>Ganymed SSH-2: Java based SSH-2 Protocol Implementation</description>
     <url>https://code.google.com/p/ganymed-ssh-2/</url>
