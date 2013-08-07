@@ -9,7 +9,7 @@
     <groupId>ch.ethz.ssh2</groupId>
     <artifactId>ganymed-ssh-2</artifactId>
     <packaging>jar</packaging>
-    <version>3.0</version>
+    <version>3.1-SNAPSHOT</version>
     <name>ganymed-ssh-2</name>
     <description>Ganymed SSH-2: Java based SSH-2 Protocol Implementation</description>
     <url>https://code.google.com/p/ganymed-ssh-2/</url>
@@ -42,9 +42,9 @@
         <source.encoding>UTF-8</source.encoding>
     </properties>
     <scm>
-        <url>http://ganymed-ssh-2.googlecode.com/svn/tags/ganymed-ssh-2-3.0</url>
-        <connection>scm:svn:https://ganymed-ssh-2.googlecode.com/svn/tags/ganymed-ssh-2-3.0</connection>
-        <developerConnection>scm:svn:https://ganymed-ssh-2.googlecode.com/svn/tags/ganymed-ssh-2-3.0</developerConnection>
+        <url>http://ganymed-ssh-2.googlecode.com/svn/trunk/</url>
+        <connection>scm:svn:https://ganymed-ssh-2.googlecode.com/svn/trunk/</connection>
+        <developerConnection>scm:svn:https://ganymed-ssh-2.googlecode.com/svn/trunk/</developerConnection>
     </scm>
     <dependencyManagement>
         <dependencies>
