@@ -3,20 +3,20 @@ package ch.ethz.ssh2;
 /**
  * Provides version information from the manifest.
  *
- * @version $Id:$
+ * @version $Id$
  */
 public class Version
 {
 	public static String getSpecification()
 	{
 		Package pkg = Version.class.getPackage();
-		return (pkg == null) ? null : pkg.getSpecificationVersion();
+		return (pkg == null) ? "" : pkg.getSpecificationVersion();
 	}
 
 	public static String getImplementation()
 	{
 		Package pkg = Version.class.getPackage();
-		return (pkg == null) ? null : pkg.getImplementationVersion();
+		return (pkg == null) ? "" : pkg.getImplementationVersion();
 	}
 
 	/**
