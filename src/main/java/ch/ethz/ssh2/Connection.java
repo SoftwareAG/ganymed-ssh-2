@@ -52,7 +52,7 @@ public class Connection
 	 * <b>NOTE: As per the RFC, the "softwareversion" string MUST consist of printable
 	 * US-ASCII characters, with the exception of whitespace characters and the minus sign (-).</b>
 	 */
-	private String softwareversion = "Ganymed_260beta1";
+	private String softwareversion = String.format("Ganymed_%s", Version.getSpecification());
 
 	/* Will be used to generate all random data needed for the current connection.
 	 * Note: SecureRandom.nextBytes() is thread safe.
@@ -540,7 +540,7 @@ public class Connection
 
 	/**
 	 * Remove a {@link ConnectionMonitor} from this connection.
-	 * 
+	 *
 	 * @param cmon
 	 * @return whether the monitor could be removed
 	 */

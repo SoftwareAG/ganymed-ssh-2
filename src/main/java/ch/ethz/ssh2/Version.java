@@ -10,13 +10,13 @@ public class Version
 	public static String getSpecification()
 	{
 		Package pkg = Version.class.getPackage();
-		return (pkg == null) ? "" : pkg.getSpecificationVersion();
+		return (pkg == null) ? "SNAPSHOT" : pkg.getSpecificationVersion();
 	}
 
 	public static String getImplementation()
 	{
 		Package pkg = Version.class.getPackage();
-		return (pkg == null) ? "" : pkg.getImplementationVersion();
+		return (pkg == null) ? "SNAPSHOT" : pkg.getImplementationVersion();
 	}
 
 	/**

@@ -29,9 +29,9 @@ public class ServerConnection
 	/**
 	 * The softwareversion presented to the SSH-2 client.
 	 */
-	private final String softwareversion = "Ganymed_SSHD_build260beta1";
+	private String softwareversion = String.format("Ganymed_SSHD_%s", Version.getSpecification());
 
-	private ServerConnectionState state = new ServerConnectionState(this);
+	private final ServerConnectionState state = new ServerConnectionState(this);
 
 	/**
 	 * Creates a new <code>ServerConnection</code> that will communicate
@@ -49,7 +49,12 @@ public class ServerConnection
 		this(s, null, null);
 	}
 
-	/**
+    public ServerConnection(Socket s, String softwareversion) {
+        this(s, null, null);
+        this.softwareversion = softwareversion;
+    }
+
+    /**
 	 * Creates a new <code>ServerConnection</code> that will communicate
 	 * with the client over the given <code>Socket</code>.
 	 * <p>
