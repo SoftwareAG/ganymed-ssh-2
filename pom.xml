@@ -63,6 +63,17 @@
         </dependency>
     </dependencies>
     <build>
+        <resources>
+            <resource>
+                <directory>${basedir}</directory>
+                <includes>
+                    <include>LICENSE.txt</include>
+                    <include>HISTORY.txt</include>
+                    <include>README.txt</include>
+                    <include>FAQ.html</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -124,6 +135,7 @@
                     <links>
                         <link>http://download.oracle.com/javase/${maven.compile.target}/docs/api/</link>
                     </links>
+                    <overview>${basedir}/overview.html</overview>
                     <encoding>${source.encoding}</encoding>
                 </configuration>
             </plugin>
