@@ -2,19 +2,23 @@
 Release Notes:
 ==============
 
-build260beta1, 2013-08-01
+build261, 2013-08-09
 
 - Joint work by Christian Plattner and David Kocher.
 
+- Hosted at https://code.google.com/p/ganymed-ssh-2/ with a shared SVN repository.
+
 - Requires Java 5 or later.
 
-- Added basic SSH server implementation. This is a proof of concept, use at your own risk.
+- Added basic SSH server implementation. This is a proof of concept, use at your own risk, the interface may change.
   Beware of side channel attacks and other nifty stuff. See BasicServer.java example.
 
 - Provide POM for Maven 3 build.
 
 - Performance gains with request parallelism in requests for read and write write operations
   in SFTPv3Client.
+
+- Fixed softwareversion string in client-server handshake.
 
 - Bugfix for infinite timeout on socket connect.
 
