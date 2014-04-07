@@ -245,8 +245,8 @@ public class ClientKexManager extends KexManager
 					}
 					catch (Exception e)
 					{
-						throw (IOException) new IOException(
-								"The server hostkey was not accepted by the verifier callback.").initCause(e);
+						throw new IOException(
+								"The server hostkey was not accepted by the verifier callback.", e);
 					}
 
 					if (vres == false)
@@ -263,7 +263,7 @@ public class ClientKexManager extends KexManager
 				}
 				catch (IllegalArgumentException e)
 				{
-					throw (IOException) new IOException("KEX error.").initCause(e);
+					throw new IOException("KEX error.", e);
 				}
 
 				boolean res = verifySignature(dhgexrpl.getSignature(), kxs.remote_hostkey);
@@ -301,8 +301,8 @@ public class ClientKexManager extends KexManager
 					}
 					catch (Exception e)
 					{
-						throw (IOException) new IOException(
-								"The server hostkey was not accepted by the verifier callback.").initCause(e);
+						throw new IOException(
+								"The server hostkey was not accepted by the verifier callback.", e);
 					}
 
 					if (vres == false)
@@ -318,7 +318,7 @@ public class ClientKexManager extends KexManager
 				}
 				catch (IllegalArgumentException e)
 				{
-					throw (IOException) new IOException("KEX error.").initCause(e);
+					throw new IOException("KEX error.", e);
 				}
 
 				boolean res = verifySignature(dhr.getSignature(), kxs.remote_hostkey);

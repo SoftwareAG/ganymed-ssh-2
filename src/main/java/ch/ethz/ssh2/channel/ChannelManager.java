@@ -654,7 +654,7 @@ public class ChannelManager implements MessageHandler
 		}
 		catch (IOException e)
 		{
-			throw (IOException) new IOException("PTY request failed").initCause(e);
+			throw new IOException("PTY request failed", e);
 		}
 	}
 
@@ -689,7 +689,7 @@ public class ChannelManager implements MessageHandler
 		}
 		catch (IOException e)
 		{
-			throw (IOException) new IOException("The X11 request failed.").initCause(e);
+			throw new IOException("The X11 request failed.", e);
 		}
 	}
 
@@ -720,7 +720,7 @@ public class ChannelManager implements MessageHandler
 		}
 		catch (IOException e)
 		{
-			throw (IOException) new IOException("The subsystem request failed.").initCause(e);
+			throw new IOException("The subsystem request failed.", e);
 		}
 	}
 
@@ -761,7 +761,7 @@ public class ChannelManager implements MessageHandler
 		}
 		catch (IOException e)
 		{
-			throw (IOException) new IOException("The execute request failed.").initCause(e);
+			throw new IOException("The execute request failed.", e);
 		}
 	}
 
@@ -792,7 +792,7 @@ public class ChannelManager implements MessageHandler
 		}
 		catch (IOException e)
 		{
-			throw (IOException) new IOException("The shell request failed.").initCause(e);
+			throw new IOException("The shell request failed.", e);
 		}
 	}
 

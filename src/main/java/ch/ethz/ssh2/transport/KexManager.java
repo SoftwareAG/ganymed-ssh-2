@@ -75,8 +75,7 @@ public abstract class KexManager implements MessageHandler
 						return lastConnInfo;
 
 					if (connectionClosed)
-						throw (IOException) new IOException("Key exchange was not finished, connection is closed.")
-								.initCause(tm.getReasonClosedCause());
+						throw new IOException("Key exchange was not finished, connection is closed.", tm.getReasonClosedCause());
 
 					try
 					{

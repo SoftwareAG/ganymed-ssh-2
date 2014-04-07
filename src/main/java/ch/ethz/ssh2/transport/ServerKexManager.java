@@ -187,7 +187,7 @@ public class ServerKexManager extends KexManager
 				}
 				catch (IllegalArgumentException e)
 				{
-					throw (IOException) new IOException("KEX error.").initCause(e);
+					throw new IOException("KEX error.", e);
 				}
 
 				kxs.K = kxs.dhx.getK();

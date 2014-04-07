@@ -743,16 +743,8 @@ public class Connection
 				token = TimeoutService.addTimeoutHandler(timeoutHorizont, timeoutHandler);
 			}
 
-			try
-			{
-				tm.clientInit(hostname, port, softwareversion, cryptoWishList, verifier, dhgexpara, connectTimeout,
-						getOrCreateSecureRND(), proxyData);
-			}
-			catch (SocketTimeoutException se)
-			{
-				throw (SocketTimeoutException) new SocketTimeoutException(
-						"The connect() operation on the socket timed out.").initCause(se);
-			}
+            tm.clientInit(hostname, port, softwareversion, cryptoWishList, verifier, dhgexpara, connectTimeout,
+                    getOrCreateSecureRND(), proxyData);
 
 			tm.setTcpNoDelay(tcpNoDelay);
 
@@ -802,8 +794,7 @@ public class Connection
 			if (e1 instanceof HTTPProxyException)
 				throw e1;
 
-			throw (IOException) new IOException("There was a problem while connecting to " + hostname + ":" + port)
-					.initCause(e1);
+			throw new IOException("There was a problem while connecting to " + hostname + ":" + port, e1);
 		}
 	}
 

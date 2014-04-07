@@ -37,8 +37,8 @@
         </developer>
     </developers>
     <properties>
-        <maven.compile.source>1.5</maven.compile.source>
-        <maven.compile.target>1.5</maven.compile.target>
+        <maven.compile.source>1.6</maven.compile.source>
+        <maven.compile.target>1.6</maven.compile.target>
         <source.encoding>UTF-8</source.encoding>
     </properties>
     <scm>

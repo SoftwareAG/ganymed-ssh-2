@@ -631,7 +631,7 @@ public class TransportManager
 		{
 			if (connectionClosed)
 			{
-				throw (IOException) new IOException("Sorry, this connection is closed.").initCause(reasonClosedCause);
+				throw new IOException("Sorry, this connection is closed.", reasonClosedCause);
 			}
 
 			flagKexOngoing = true;
@@ -672,7 +672,7 @@ public class TransportManager
 		{
 			if (connectionClosed)
 				/* Inform the caller that there is no point in triggering a new kex */
-				throw (IOException) new IOException("Sorry, this connection is closed.").initCause(reasonClosedCause);
+				throw new IOException("Sorry, this connection is closed.", reasonClosedCause);
 		}
 
 		km.initiateKEX(cwl, dhgex, dsa, rsa);
@@ -789,8 +789,7 @@ public class TransportManager
 				{
 					if (connectionClosed)
 					{
-						throw (IOException) new IOException("Sorry, this connection is closed.")
-								.initCause(reasonClosedCause);
+						throw new IOException("Sorry, this connection is closed.", reasonClosedCause);
 					}
 
 					if (flagKexOngoing == false)
