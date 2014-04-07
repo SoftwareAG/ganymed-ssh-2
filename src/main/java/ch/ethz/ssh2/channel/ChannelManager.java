@@ -174,37 +174,39 @@ public class ChannelManager implements MessageHandler
 	}
 
 	private void waitForChannelSuccessOrFailure(Channel c) throws IOException
-	{
-        synchronized (c)
-        {
-            while ((c.successCounter == 0) && (c.failedCounter == 0))
-            {
-                if (c.state != Channel.STATE_OPEN)
-                {
-                    String detail = c.getReasonClosed();
+   	{
+   		synchronized (c)
+   		{
+   			while ((c.successCounter == 0) && (c.failedCounter == 0))
+   			{
+   				if (c.state != Channel.STATE_OPEN)
+   				{
+   					String detail = c.getReasonClosed();
 
-                    if (detail == null)
-                        detail = "state: " + c.state;
+   					if (detail == null)
+   						detail = "state: " + c.state;
 
-                    throw new IOException("This SSH2 channel is not open (" + detail + ")");
-                }
-
-                try
-                {
-                    c.wait();
-                }
-                catch (InterruptedException e)
-                {
-                    throw new InterruptedIOException(e.getMessage());
-                }
+   					throw new IOException("This SSH2 channel is not open (" + detail + ")");
+   				}
+   				try
+   				{
+   					c.wait();
+   				}
+   				catch (InterruptedException ignore)
+   				{
+   					throw new InterruptedIOException();
+   				}
+   			}
+   			if ((c.failedCounter == 0) && (c.successCounter == 1)) {
+                return;
             }
-
-            if (c.failedCounter != 0)
-            {
+   			if ((c.failedCounter == 1) && (c.successCounter == 0)) {
                 throw new IOException("The server denied the request.");
             }
-        }
-	}
+   			throw new IOException("Illegal state. The server sent " + c.successCounter
+   					+ " SSH_MSG_CHANNEL_SUCCESS and " + c.failedCounter + " SSH_MSG_CHANNEL_FAILURE messages.");
+   		}
+   	}
 
 	public void registerX11Cookie(String hexFakeCookie, X11ServerData data)
 	{
@@ -637,10 +639,10 @@ public class ChannelManager implements MessageHandler
 		log.debug("Requesting X11 forwarding (Channel " + c.localID + "/" + c.remoteID + ")");
 
 		try
-		{
+        {
 			waitForChannelSuccessOrFailure(c);
-		}
-		catch (IOException e)
+        }
+        catch (IOException e)
 		{
 			throw new IOException("The X11 request failed.", e);
 		}
