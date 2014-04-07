@@ -6,6 +6,7 @@ package ch.ethz.ssh2;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 
 /**
  * A <code>StreamGobbler</code> is an InputStream that uses an internal worker
@@ -129,43 +130,33 @@ public class StreamGobbler extends InputStream
 	@Override
 	public int read() throws IOException
 	{
-		boolean wasInterrupted = false;
+        synchronized (synchronizer)
+        {
+            if (isClosed)
+                throw new IOException("This StreamGobbler is closed.");
 
-		try
-		{
-			synchronized (synchronizer)
-			{
-				if (isClosed)
-					throw new IOException("This StreamGobbler is closed.");
+            while (read_pos == write_pos)
+            {
+                if (exception != null)
+                    throw exception;
 
-				while (read_pos == write_pos)
-				{
-					if (exception != null)
-						throw exception;
+                if (isEOF)
+                    return -1;
 
-					if (isEOF)
-						return -1;
+                try
+                {
+                    synchronizer.wait();
+                }
+                catch (InterruptedException e)
+                {
+                    throw new InterruptedIOException();
+                }
+            }
+            return buffer[read_pos++] & 0xff;
+        }
+    }
 
-					try
-					{
-						synchronizer.wait();
-					}
-					catch (InterruptedException e)
-					{
-						wasInterrupted = true;
-					}
-				}
-				return buffer[read_pos++] & 0xff;
-			}
-		}
-		finally
-		{
-			if (wasInterrupted)
-				Thread.currentThread().interrupt();
-		}
-	}
-
-	@Override
+    @Override
 	public int available() throws IOException
 	{
 		synchronized (synchronizer)
@@ -206,51 +197,40 @@ public class StreamGobbler extends InputStream
 		if ((off < 0) || (len < 0) || ((off + len) > b.length) || ((off + len) < 0) || (off > b.length))
 			throw new IndexOutOfBoundsException();
 
-		if (len == 0)
-			return 0;
+        if (len == 0)
+            return 0;
+        synchronized (synchronizer)
+        {
+            if (isClosed)
+                throw new IOException("This StreamGobbler is closed.");
 
-		boolean wasInterrupted = false;
+            while (read_pos == write_pos)
+            {
+                if (exception != null)
+                    throw exception;
 
-		try
-		{
-			synchronized (synchronizer)
-			{
-				if (isClosed)
-					throw new IOException("This StreamGobbler is closed.");
+                if (isEOF)
+                    return -1;
 
-				while (read_pos == write_pos)
-				{
-					if (exception != null)
-						throw exception;
+                try
+                {
+                    synchronizer.wait();
+                }
+                catch (InterruptedException e)
+                {
+                    throw new InterruptedIOException();
+                }
+            }
 
-					if (isEOF)
-						return -1;
+            int avail = write_pos - read_pos;
 
-					try
-					{
-						synchronizer.wait();
-					}
-					catch (InterruptedException e)
-					{
-						wasInterrupted = true;
-					}
-				}
+            avail = (avail > len) ? len : avail;
 
-				int avail = write_pos - read_pos;
+            System.arraycopy(buffer, read_pos, b, off, avail);
 
-				avail = (avail > len) ? len : avail;
+            read_pos += avail;
 
-				System.arraycopy(buffer, read_pos, b, off, avail);
-
-				read_pos += avail;
-
-				return avail;
-			}
-		}
-		finally
-		{
-			if (wasInterrupted)
-				Thread.currentThread().interrupt();
-		}
+            return avail;
+        }
 	}
 }

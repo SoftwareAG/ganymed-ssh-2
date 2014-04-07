@@ -5,6 +5,7 @@
 package ch.ethz.ssh2.auth;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,37 +71,27 @@ public class AuthenticationManager implements MessageHandler
 
     byte[] deQueue() throws IOException
    	{
-   		boolean wasInterrupted = false;
+        synchronized (packets)
+        {
+            while (packets.size() == 0)
+            {
+                if (connectionClosed)
+                    throw new IOException("The connection is closed.", tm
+                            .getReasonClosedCause());
 
-   		try
-   		{
-   			synchronized (packets)
-   			{
-   				while (packets.size() == 0)
-   				{
-   					if (connectionClosed)
-   						throw new IOException("The connection is closed.", tm
-   								.getReasonClosedCause());
-
-   					try
-   					{
-   						packets.wait();
-   					}
-   					catch (InterruptedException ign)
-   					{
-   						wasInterrupted = true;
-   					}
-   				}
-   				byte[] res = packets.get(0);
-   				packets.remove(0);
-   				return res;
-   			}
-   		}
-   		finally
-   		{
-   			if (wasInterrupted)
-   				Thread.currentThread().interrupt();
-   		}
+                try
+                {
+                    packets.wait();
+                }
+                catch (InterruptedException e)
+                {
+                    throw new InterruptedIOException(e.getMessage());
+                }
+            }
+            byte[] res = packets.get(0);
+            packets.remove(0);
+            return res;
+        }
    	}
 
 	byte[] getNextMessage() throws IOException

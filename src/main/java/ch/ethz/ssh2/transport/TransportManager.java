@@ -7,6 +7,7 @@ package ch.ethz.ssh2.transport;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -16,7 +17,6 @@ import java.net.UnknownHostException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 
 import ch.ethz.ssh2.ConnectionInfo;
 import ch.ethz.ssh2.ConnectionMonitor;
@@ -779,52 +779,41 @@ public class TransportManager
 		{
 			throw new IOException("Assertion error: sendMessage may never be invoked by the receiver thread!");
 		}
+        synchronized (connectionSemaphore)
+        {
+            while (true)
+            {
+                if (connectionClosed)
+                {
+                    throw new IOException("Sorry, this connection is closed.", reasonClosedCause);
+                }
 
-		boolean wasInterrupted = false;
+                if (flagKexOngoing == false)
+                {
+                    break;
+                }
 
-		try
-		{
-			synchronized (connectionSemaphore)
-			{
-				while (true)
-				{
-					if (connectionClosed)
-					{
-						throw new IOException("Sorry, this connection is closed.", reasonClosedCause);
-					}
+                try
+                {
+                    connectionSemaphore.wait();
+                }
+                catch (InterruptedException e)
+                {
+                    throw new InterruptedIOException(e.getMessage());
+                }
+            }
 
-					if (flagKexOngoing == false)
-					{
-						break;
-					}
-
-					try
-					{
-						connectionSemaphore.wait();
-					}
-					catch (InterruptedException e)
-					{
-						wasInterrupted = true;
-					}
-				}
-
-				try
-				{
-					tc.sendMessage(msg);
-					idle = false;
-				}
-				catch (IOException e)
-				{
-					close(e, false);
-					throw e;
-				}
-			}
-		}
-		finally
-		{
-			if (wasInterrupted)
-				Thread.currentThread().interrupt();
-		}
+            try
+            {
+                tc.sendMessage(msg);
+                idle = false;
+            }
+            catch (IOException e)
+            {
+                close(e, false);
+                throw e;
+            }
+        }
 	}
 
 	public void receiveLoop() throws IOException

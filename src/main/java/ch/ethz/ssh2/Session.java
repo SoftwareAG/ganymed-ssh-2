@@ -391,8 +391,7 @@ public class Session
 	 * @return all bitmask specifying all current conditions that are true
 	 */
 
-	public int waitForCondition(int condition_set, long timeout)
-	{
+	public int waitForCondition(int condition_set, long timeout) throws IOException {
 		if (timeout < 0)
 			throw new IllegalArgumentException("timeout must be non-negative!");
 

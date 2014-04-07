@@ -5,6 +5,7 @@
 package ch.ethz.ssh2.transport;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.security.SecureRandom;
 
 import ch.ethz.ssh2.ConnectionInfo;
@@ -63,36 +64,26 @@ public abstract class KexManager implements MessageHandler
 
 	public ConnectionInfo getOrWaitForConnectionInfo(int minKexCount) throws IOException
 	{
-		boolean wasInterrupted = false;
+        synchronized (accessLock)
+        {
+            while (true)
+            {
+                if ((lastConnInfo != null) && (lastConnInfo.keyExchangeCounter >= minKexCount))
+                    return lastConnInfo;
 
-		try
-		{
-			synchronized (accessLock)
-			{
-				while (true)
-				{
-					if ((lastConnInfo != null) && (lastConnInfo.keyExchangeCounter >= minKexCount))
-						return lastConnInfo;
+                if (connectionClosed)
+                    throw new IOException("Key exchange was not finished, connection is closed.", tm.getReasonClosedCause());
 
-					if (connectionClosed)
-						throw new IOException("Key exchange was not finished, connection is closed.", tm.getReasonClosedCause());
-
-					try
-					{
-						accessLock.wait();
-					}
-					catch (InterruptedException e)
-					{
-						wasInterrupted = true;
-					}
-				}
-			}
-		}
-		finally
-		{
-			if (wasInterrupted)
-				Thread.currentThread().interrupt();
-		}
+                try
+                {
+                    accessLock.wait();
+                }
+                catch (InterruptedException e)
+                {
+                    throw new InterruptedIOException(e.getMessage());
+                }
+            }
+        }
 	}
 
 	private String getFirstMatch(String[] client, String[] server) throws NegotiateException
