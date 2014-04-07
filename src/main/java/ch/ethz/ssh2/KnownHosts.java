@@ -15,6 +15,7 @@ import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Vector;
@@ -270,7 +271,7 @@ public class KnownHosts
 
 	private List<Object> getAllKeys(String hostname)
 	{
-		List<Object> keys = new Vector<Object>();
+		List<Object> keys = new ArrayList<Object>();
 
 		synchronized (publicKeys)
 		{

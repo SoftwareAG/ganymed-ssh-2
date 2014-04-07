@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -109,7 +110,7 @@ public class Connection
 
 	private ProxyData proxyData = null;
 
-	private List<ConnectionMonitor> connectionMonitors = new Vector<ConnectionMonitor>();
+	private List<ConnectionMonitor> connectionMonitors = new ArrayList<ConnectionMonitor>();
 
 	/**
 	 * Prepares a fresh <code>Connection</code> object which can then be used

@@ -14,6 +14,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -71,7 +72,7 @@ public class TransportManager
 		int high;
 	}
 
-	private final List<AsynchronousEntry> asynchronousQueue = new Vector<AsynchronousEntry>();
+	private final List<AsynchronousEntry> asynchronousQueue = new ArrayList<AsynchronousEntry>();
 	private Thread asynchronousThread = null;
 	private boolean asynchronousPending = false;
 
@@ -181,11 +182,11 @@ public class TransportManager
 	private TransportConnection tc;
 	private KexManager km;
 
-	private final List<HandlerEntry> messageHandlers = new Vector<HandlerEntry>();
+	private final List<HandlerEntry> messageHandlers = new ArrayList<HandlerEntry>();
 
 	private Thread receiveThread;
 
-	private List<ConnectionMonitor> connectionMonitors = new Vector<ConnectionMonitor>();
+	private List<ConnectionMonitor> connectionMonitors = new ArrayList<ConnectionMonitor>();
 	private boolean monitorsWereInformed = false;
 
 	/**
@@ -352,7 +353,7 @@ public class TransportManager
 
 		/* No check if we need to inform the monitors */
 
-		List<ConnectionMonitor> monitors = new Vector<ConnectionMonitor>();
+		List<ConnectionMonitor> monitors = new ArrayList<ConnectionMonitor>();
 
 		synchronized (this)
 		{
@@ -730,7 +731,7 @@ public class TransportManager
 	{
 		synchronized (this)
 		{
-			connectionMonitors = new Vector<ConnectionMonitor>();
+			connectionMonitors = new ArrayList<ConnectionMonitor>();
 			connectionMonitors.addAll(monitors);
 		}
 	}

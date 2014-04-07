@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -700,7 +701,7 @@ public class SFTPv3Client
 
 	private List<SFTPv3DirectoryEntry> scanDirectory(byte[] handle) throws IOException
 	{
-		List<SFTPv3DirectoryEntry> files = new Vector<SFTPv3DirectoryEntry>();
+		List<SFTPv3DirectoryEntry> files = new ArrayList<SFTPv3DirectoryEntry>();
 
 		while (true)
 		{

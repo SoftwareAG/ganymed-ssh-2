@@ -32,7 +32,7 @@ public class BlockCipherFactory
 		}
 	}
 
-	private static final List<CipherEntry> ciphers = new Vector<CipherEntry>();
+	private static final List<CipherEntry> ciphers = new ArrayList<CipherEntry>();
 
 	static
 	{

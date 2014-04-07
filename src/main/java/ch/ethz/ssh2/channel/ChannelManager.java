@@ -6,6 +6,7 @@
 package ch.ethz.ssh2.channel;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Vector;
@@ -51,7 +52,7 @@ public class ChannelManager implements MessageHandler
 
 	private final HashMap<String, X11ServerData> x11_magic_cookies = new HashMap<String, X11ServerData>();
 
-	private final List<Channel> channels = new Vector<Channel>();
+	private final List<Channel> channels = new ArrayList<Channel>();
 	private int nextLocalChannel = 100;
 	private boolean shutdown = false;
 	private int globalSuccessCounter = 0;
@@ -59,7 +60,7 @@ public class ChannelManager implements MessageHandler
 
 	private final HashMap<Integer, RemoteForwardingData> remoteForwardings = new HashMap<Integer, RemoteForwardingData>();
 
-	private final List<IChannelWorkerThread> listenerThreads = new Vector<IChannelWorkerThread>();
+	private final List<IChannelWorkerThread> listenerThreads = new ArrayList<IChannelWorkerThread>();
 
 	private boolean listenerThreadsAllowed = true;
 
@@ -266,7 +267,7 @@ public class ChannelManager implements MessageHandler
 
 		log.debug("Closing all X11 channels for the given fake cookie");
 
-		List<Channel> channel_copy = new Vector<Channel>();
+		List<Channel> channel_copy = new ArrayList<Channel>();
 
 		synchronized (channels)
 		{
@@ -305,7 +306,7 @@ public class ChannelManager implements MessageHandler
 	{
 		log.debug("Closing all channels");
 
-		List<Channel> channel_copy = new Vector<Channel>();
+		List<Channel> channel_copy = new ArrayList<Channel>();
 
 		synchronized (channels)
 		{
