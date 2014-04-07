@@ -57,7 +57,7 @@ public class TimeoutService
 
 					long now = System.currentTimeMillis();
 
-					TimeoutToken tt = (TimeoutToken) todolist.getFirst();
+					TimeoutToken tt = todolist.getFirst();
 
 					if (tt.runTime > now)
 					{
