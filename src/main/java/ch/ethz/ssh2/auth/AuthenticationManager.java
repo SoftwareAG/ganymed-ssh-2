@@ -6,8 +6,8 @@ package ch.ethz.ssh2.auth;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 
 import ch.ethz.ssh2.InteractiveCallback;
 import ch.ethz.ssh2.crypto.PEMDecoder;
@@ -33,16 +33,13 @@ import ch.ethz.ssh2.transport.MessageHandler;
 import ch.ethz.ssh2.transport.TransportManager;
 
 /**
- * AuthenticationManager.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
  */
 public class AuthenticationManager implements MessageHandler
 {
 	private TransportManager tm;
 
-	private final List<byte[]> packets = new Vector<byte[]>();
+	private final List<byte[]> packets = new ArrayList<byte[]>();
 	private boolean connectionClosed = false;
 
 	private String banner;
@@ -63,48 +60,48 @@ public class AuthenticationManager implements MessageHandler
 		if (remainingMethods == null)
 			return false;
 
-		for (int i = 0; i < remainingMethods.length; i++)
-		{
-			if (remainingMethods[i].compareTo(methName) == 0)
-				return true;
-		}
+        for(String remainingMethod : remainingMethods) {
+            if(remainingMethod.compareTo(methName) == 0) {
+                return true;
+            }
+        }
 		return false;
 	}
 
-	byte[] deQueue() throws IOException
-	{
-		boolean wasInterrupted = false;
+    byte[] deQueue() throws IOException
+   	{
+   		boolean wasInterrupted = false;
 
-		try
-		{
-			synchronized (packets)
-			{
-				while (packets.size() == 0)
-				{
-					if (connectionClosed)
-						throw (IOException) new IOException("The connection is closed.").initCause(tm
-								.getReasonClosedCause());
+   		try
+   		{
+   			synchronized (packets)
+   			{
+   				while (packets.size() == 0)
+   				{
+   					if (connectionClosed)
+   						throw new IOException("The connection is closed.", tm
+   								.getReasonClosedCause());
 
-					try
-					{
-						packets.wait();
-					}
-					catch (InterruptedException ign)
-					{
-						wasInterrupted = true;
-					}
-				}
-				byte[] res = packets.get(0);
-				packets.remove(0);
-				return res;
-			}
-		}
-		finally
-		{
-			if (wasInterrupted)
-				Thread.currentThread().interrupt();
-		}
-	}
+   					try
+   					{
+   						packets.wait();
+   					}
+   					catch (InterruptedException ign)
+   					{
+   						wasInterrupted = true;
+   					}
+   				}
+   				byte[] res = packets.get(0);
+   				packets.remove(0);
+   				return res;
+   			}
+   		}
+   		finally
+   		{
+   			if (wasInterrupted)
+   				Thread.currentThread().interrupt();
+   		}
+   	}
 
 	byte[] getNextMessage() throws IOException
 	{
@@ -130,7 +127,7 @@ public class AuthenticationManager implements MessageHandler
 	public String getBanner()
 	{
 		return banner;
-		
+
 	}
 	public boolean getPartialSuccess()
 	{
@@ -175,6 +172,68 @@ public class AuthenticationManager implements MessageHandler
 			throw new IOException("Unexpected SSH message (type " + msg[0] + ")");
 		}
 		return authenticated;
+	}
+
+	public boolean authenticatePublicKey(String user, AgentProxy proxy) throws IOException {
+		initialize(user);
+
+		boolean success;
+        for(AgentIdentity identity : proxy.getIdentities()) {
+            success = authenticatePublicKey(user, identity);
+            if(success) {
+                return true;
+            }
+        }
+		return false;
+	}
+
+	boolean authenticatePublicKey(String user, AgentIdentity identity) throws IOException {
+		if (methodPossible("publickey") == false)
+			throw new IOException("Authentication method publickey not supported by the server at this stage.");
+
+		byte[] pubKeyBlob = identity.getPublicKeyBlob();
+		if(pubKeyBlob == null) {
+			return false;
+		}
+
+		TypesWriter tw = new TypesWriter();
+		byte[] H = tm.getSessionIdentifier();
+
+		tw.writeString(H, 0, H.length);
+		tw.writeByte(Packets.SSH_MSG_USERAUTH_REQUEST);
+		tw.writeString(user);
+		tw.writeString("ssh-connection");
+		tw.writeString("publickey");
+		tw.writeBoolean(true);
+		tw.writeString(identity.getAlgName());
+		tw.writeString(pubKeyBlob, 0, pubKeyBlob.length);
+
+		byte[] msg = tw.getBytes();
+		byte[] response = identity.sign(msg);
+
+		PacketUserauthRequestPublicKey ua = new PacketUserauthRequestPublicKey(
+				"ssh-connection", user, identity.getAlgName(), pubKeyBlob, response);
+		tm.sendMessage(ua.getPayload());
+
+		byte[] ar = getNextMessage();
+
+		if (ar[0] == Packets.SSH_MSG_USERAUTH_SUCCESS)
+		{
+			authenticated = true;
+			tm.removeMessageHandler(this, 0, 255);
+			return true;
+		}
+
+		if (ar[0] == Packets.SSH_MSG_USERAUTH_FAILURE)
+		{
+			PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
+
+			remainingMethods = puf.getAuthThatCanContinue();
+			isPartialSuccess = puf.isPartialSuccess();
+
+			return false;
+		}
+		throw new IOException("Unexpected SSH message (type " + ar[0] + ")");
 	}
 
 	public boolean authenticatePublicKey(String user, char[] PEMPrivateKey, String password, SecureRandom rnd)
@@ -278,7 +337,7 @@ public class AuthenticationManager implements MessageHandler
 		catch (IOException e)
 		{
 			tm.close(e, false);
-			throw (IOException) new IOException("Publickey authentication failed.").initCause(e);
+			throw new IOException("Publickey authentication failed.", e);
 		}
 	}
 
@@ -292,7 +351,7 @@ public class AuthenticationManager implements MessageHandler
 		catch (IOException e)
 		{
 			tm.close(e, false);
-			throw (IOException) new IOException("None authentication failed.").initCause(e);
+			throw new IOException("None authentication failed.", e);
 		}
 	}
 
@@ -333,7 +392,7 @@ public class AuthenticationManager implements MessageHandler
 		catch (IOException e)
 		{
 			tm.close(e, false);
-			throw (IOException) new IOException("Password authentication failed.").initCause(e);
+			throw new IOException("Password authentication failed.", e);
 		}
 	}
 
@@ -389,7 +448,7 @@ public class AuthenticationManager implements MessageHandler
 					}
 					catch (Exception e)
 					{
-						throw (IOException) new IOException("Exception in callback.").initCause(e);
+						throw new IOException("Exception in callback.", e);
 					}
 
 					if (responses == null)
@@ -407,7 +466,7 @@ public class AuthenticationManager implements MessageHandler
 		catch (IOException e)
 		{
 			tm.close(e, false);
-			throw (IOException) new IOException("Keyboard-interactive authentication failed.").initCause(e);
+			throw new IOException("Keyboard-interactive authentication failed.", e);
 		}
 	}
 
