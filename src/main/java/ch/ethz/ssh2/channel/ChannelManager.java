@@ -458,7 +458,7 @@ public class ChannelManager implements MessageHandler
 
 		synchronized (remoteForwardings)
 		{
-			Integer key = new Integer(bindPort);
+			Integer key = bindPort;
 
 			if (remoteForwardings.get(key) != null)
 			{
@@ -500,7 +500,7 @@ public class ChannelManager implements MessageHandler
 
 		synchronized (remoteForwardings)
 		{
-			rfd = remoteForwardings.get(new Integer(bindPort));
+			rfd = remoteForwardings.get(bindPort);
 
 			if (rfd == null)
 				throw new IOException("Sorry, there is no known remote forwarding for remote port " + bindPort);
@@ -1138,7 +1138,7 @@ public class ChannelManager implements MessageHandler
 
 			synchronized (remoteForwardings)
 			{
-				rfd = remoteForwardings.get(new Integer(remoteConnectedPort));
+				rfd = remoteForwardings.get(remoteConnectedPort);
 			}
 
 			if (rfd == null)
@@ -1276,7 +1276,7 @@ public class ChannelManager implements MessageHandler
 
 			synchronized (c)
 			{
-				c.exit_status = new Integer(exit_status);
+				c.exit_status = exit_status;
 				c.notifyAll();
 			}
 
