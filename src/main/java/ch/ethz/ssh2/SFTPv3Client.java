@@ -1308,7 +1308,7 @@ public class SFTPv3Client
 	/**
 	 * Mapping request ID to request.
 	 */
-	Map<Integer, OutstandingReadRequest> pendingReadQueue
+	private Map<Integer, OutstandingReadRequest> pendingReadQueue
 			= new HashMap<Integer, OutstandingReadRequest>();
 
 	/**
@@ -1477,7 +1477,7 @@ public class SFTPv3Client
 	/**
 	 * Mapping request ID to request.
 	 */
-	Map<Integer, OutstandingStatusRequest> pendingStatusQueue
+	private Map<Integer, OutstandingStatusRequest> pendingStatusQueue
 			= new HashMap<Integer, OutstandingStatusRequest>();
 
 	/**

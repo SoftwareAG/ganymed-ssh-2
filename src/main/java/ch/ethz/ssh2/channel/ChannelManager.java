@@ -9,28 +9,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Vector;
+import java.util.Map;
 
 import ch.ethz.ssh2.ChannelCondition;
 import ch.ethz.ssh2.PtySettings;
 import ch.ethz.ssh2.ServerConnectionCallback;
 import ch.ethz.ssh2.ServerSessionCallback;
 import ch.ethz.ssh2.log.Logger;
-import ch.ethz.ssh2.packets.PacketChannelFailure;
-import ch.ethz.ssh2.packets.PacketChannelOpenConfirmation;
-import ch.ethz.ssh2.packets.PacketChannelOpenFailure;
-import ch.ethz.ssh2.packets.PacketChannelSuccess;
-import ch.ethz.ssh2.packets.PacketGlobalCancelForwardRequest;
-import ch.ethz.ssh2.packets.PacketGlobalForwardRequest;
-import ch.ethz.ssh2.packets.PacketOpenDirectTCPIPChannel;
-import ch.ethz.ssh2.packets.PacketOpenSessionChannel;
-import ch.ethz.ssh2.packets.PacketSessionExecCommand;
-import ch.ethz.ssh2.packets.PacketSessionPtyRequest;
-import ch.ethz.ssh2.packets.PacketSessionStartShell;
-import ch.ethz.ssh2.packets.PacketSessionSubsystemRequest;
-import ch.ethz.ssh2.packets.PacketSessionX11Request;
-import ch.ethz.ssh2.packets.Packets;
-import ch.ethz.ssh2.packets.TypesReader;
+import ch.ethz.ssh2.packets.*;
 import ch.ethz.ssh2.server.ServerConnectionState;
 import ch.ethz.ssh2.transport.MessageHandler;
 import ch.ethz.ssh2.transport.TransportManager;
@@ -50,7 +36,7 @@ public class ChannelManager implements MessageHandler
 	private final ServerConnectionState server_state;
 	private final TransportManager tm;
 
-	private final HashMap<String, X11ServerData> x11_magic_cookies = new HashMap<String, X11ServerData>();
+	private final Map<String, X11ServerData> x11_magic_cookies = new HashMap<String, X11ServerData>();
 
 	private final List<Channel> channels = new ArrayList<Channel>();
 	private int nextLocalChannel = 100;
@@ -58,7 +44,7 @@ public class ChannelManager implements MessageHandler
 	private int globalSuccessCounter = 0;
 	private int globalFailedCounter = 0;
 
-	private final HashMap<Integer, RemoteForwardingData> remoteForwardings = new HashMap<Integer, RemoteForwardingData>();
+	private final Map<Integer, RemoteForwardingData> remoteForwardings = new HashMap<Integer, RemoteForwardingData>();
 
 	private final List<IChannelWorkerThread> listenerThreads = new ArrayList<IChannelWorkerThread>();
 
