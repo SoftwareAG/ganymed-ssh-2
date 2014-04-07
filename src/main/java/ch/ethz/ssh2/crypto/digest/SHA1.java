@@ -184,7 +184,7 @@ public final class SHA1 implements Digest
 		}
 	}
 
-	private final void putInt(byte[] b, int pos, int val)
+	private void putInt(byte[] b, int pos, int val)
 	{
 		b[pos] = (byte) (val >> 24);
 		b[pos + 1] = (byte) (val >> 16);
@@ -240,7 +240,7 @@ public final class SHA1 implements Digest
 		reset();
 	}
 
-	private final void perform()
+	private void perform()
 	{
 		for (int t = 16; t < 80; t++)
 		{
