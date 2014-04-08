@@ -160,16 +160,16 @@ public class ChannelManager implements MessageHandler
                     throw new InterruptedIOException(e.getMessage());
                 }
             }
-
-            if (globalFailedCounter != 0)
+            if ((globalFailedCounter == 0) && (globalSuccessCounter == 1))
+            {
+                return;
+            }
+            if ((globalFailedCounter == 1) && (globalSuccessCounter == 0))
             {
                 throw new IOException("The server denied the request (did you enable port forwarding?)");
             }
-
-            if (globalSuccessCounter == 0)
-            {
-                throw new IOException("Illegal state.");
-            }
+            throw new IOException("Illegal state. The server sent " + globalSuccessCounter
+                    + " SSH_MSG_REQUEST_SUCCESS and " + globalFailedCounter + " SSH_MSG_REQUEST_FAILURE messages.");
         }
 	}
 
@@ -876,9 +876,9 @@ public class ChannelManager implements MessageHandler
 			int avail;
 
 			if (extended)
-				avail = c.stderrWritepos - c.stderrReadpos;
+                avail = c.stderrWritepos - c.stderrReadpos;
 			else
-				avail = c.stdoutWritepos - c.stdoutReadpos;
+                avail = c.stdoutWritepos - c.stdoutReadpos;
 
 			return ((avail > 0) ? avail : (c.EOF ? -1 : 0));
 		}
