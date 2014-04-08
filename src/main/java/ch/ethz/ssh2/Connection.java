@@ -14,8 +14,8 @@ import java.net.SocketTimeoutException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Vector;
 
+import ch.ethz.ssh2.auth.AgentProxy;
 import ch.ethz.ssh2.auth.AuthenticationManager;
 import ch.ethz.ssh2.channel.ChannelManager;
 import ch.ethz.ssh2.crypto.CryptoWishList;
@@ -291,8 +291,29 @@ public class Connection
 
 		authenticated = am.authenticateInteractive(user, submethods, cb);
 
-		return authenticated;
-	}
+        return authenticated;
+    }
+
+    public synchronized boolean authenticateWithAgent(String user, AgentProxy proxy) throws IOException {
+        if (tm == null)
+            throw new IllegalStateException("Connection is not established!");
+
+        if (authenticated)
+            throw new IllegalStateException("Connection is already authenticated!");
+
+        if (am == null)
+            am = new AuthenticationManager(tm);
+
+        if (cm == null)
+            cm = new ChannelManager(tm);
+
+        if (user == null)
+            throw new IllegalArgumentException("user argument is null");
+
+        authenticated = am.authenticatePublicKey(user, proxy);
+
+        return authenticated;
+    }
 
 	/**
 	 * After a successful connect, one has to authenticate oneself. This method
