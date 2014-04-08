@@ -55,7 +55,7 @@ public class ClientServerHello
 
 			len++;
 			if (pos >= buffer.length)
-				throw new IOException("The other party sent a too long line.");
+				throw new IOException("The server sent a too long line: " + StringEncoder.GetString(buffer));
 		}
 
 		return len;
