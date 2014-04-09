@@ -1495,25 +1495,36 @@ public class SFTPv3Client
 	{
 		checkHandleValidAndOpen(handle);
 
-		// Send the next write request
-		OutstandingStatusRequest req = new OutstandingStatusRequest();
-		req.req_id = generateNextRequestID();
+        while (len > 0) {
+            int writeRequestLen = len;
 
-		TypesWriter tw = new TypesWriter();
-		tw.writeString(handle.fileHandle, 0, handle.fileHandle.length);
-		tw.writeUINT64(fileOffset);
-		tw.writeString(src, srcoff, len);
+            if (writeRequestLen > 32768) {
+                writeRequestLen = 32768;
+            }
 
-		log.debug("Sending SSH_FXP_WRITE...");
-		sendMessage(Packet.SSH_FXP_WRITE, req.req_id, tw.getBytes());
+            // Send the next write request
+            OutstandingStatusRequest req = new OutstandingStatusRequest();
+            req.req_id = generateNextRequestID();
 
-		pendingStatusQueue.put(req.req_id, req);
+            TypesWriter tw = new TypesWriter();
+            tw.writeString(handle.fileHandle, 0, handle.fileHandle.length);
+            tw.writeUINT64(fileOffset);
+            tw.writeString(src, srcoff, writeRequestLen);
 
-		// Only read next status if parallelism reached
-		while (pendingStatusQueue.size() >= parallelism)
-		{
-			this.readStatus();
-		}
+            log.debug("Sending SSH_FXP_WRITE...");
+            sendMessage(Packet.SSH_FXP_WRITE, req.req_id, tw.getBytes());
+
+            pendingStatusQueue.put(req.req_id, req);
+
+            // Only read next status if parallelism reached
+            while (pendingStatusQueue.size() >= parallelism)
+            {
+                this.readStatus();
+            }
+            fileOffset += writeRequestLen;
+            srcoff += writeRequestLen;
+            len -= writeRequestLen;
+        }
 	}
 
 	private void readStatus() throws IOException
