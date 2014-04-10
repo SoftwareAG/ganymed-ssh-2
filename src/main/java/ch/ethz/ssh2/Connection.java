@@ -723,23 +723,6 @@ public class Connection
 		tm.setSoTimeout(connectTimeout);
 		tm.setConnectionMonitors(connectionMonitors);
 
-		/* Make sure that the runnable below will observe the new value of "tm"
-		 * and "state" (the runnable will be executed in a different thread, which
-		 * may be already running, that is why we need a memory barrier here).
-		 * See also the comment in Channel.java if you
-		 * are interested in the details.
-		 * 
-		 * OKOK, this is paranoid since adding the runnable to the todo list
-		 * of the TimeoutService will ensure that all writes have been flushed
-		 * before the Runnable reads anything
-		 * (there is a synchronized block in TimeoutService.addTimeoutHandler).
-		 */
-
-		synchronized (tm)
-		{
-			/* We could actually synchronize on anything. */
-		}
-
 		try
 		{
 			TimeoutToken token = null;
