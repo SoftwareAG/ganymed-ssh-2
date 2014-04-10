@@ -8,13 +8,13 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.SocketException;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 
 import ch.ethz.ssh2.channel.Channel;
 import ch.ethz.ssh2.log.Logger;
@@ -159,7 +159,7 @@ public class SFTPv3Client
 	{
 		if (charset == null)
 		{
-			charsetName = charset;
+			charsetName = null;
 			return;
 		}
 
@@ -239,11 +239,11 @@ public class SFTPv3Client
 			int count = is.read(buff, pos, len);
 			if (count < 0)
 			{
-				throw new IOException("Unexpected end of sftp stream.");
+				throw new SocketException("Unexpected end of sftp stream.");
 			}
 			if ((count == 0) || (count > len))
 			{
-				throw new IOException("Underlying stream implementation is bogus!");
+				throw new SocketException("Underlying stream implementation is bogus!");
 			}
 			len -= count;
 			pos += count;
@@ -396,7 +396,7 @@ public class SFTPv3Client
 		int rep_id = tr.readUINT32();
 		if (rep_id != req_id)
 		{
-			throw new IOException("The server sent an invalid id field.");
+			throw new RequestMismatchException();
 		}
 
 		if (t == Packet.SSH_FXP_ATTRS)
@@ -406,7 +406,7 @@ public class SFTPv3Client
 
 		if (t != Packet.SSH_FXP_STATUS)
 		{
-			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+			throw new PacketTypeException(t);
 		}
 
 		int errorCode = tr.readUINT32();
@@ -435,7 +435,7 @@ public class SFTPv3Client
 		int rep_id = tr.readUINT32();
 		if (rep_id != req_id)
 		{
-			throw new IOException("The server sent an invalid id field.");
+			throw new RequestMismatchException();
 		}
 
 		if (t == Packet.SSH_FXP_ATTRS)
@@ -445,7 +445,7 @@ public class SFTPv3Client
 
 		if (t != Packet.SSH_FXP_STATUS)
 		{
-			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+			throw new PacketTypeException(t);
 		}
 
 		int errorCode = tr.readUINT32();
@@ -511,7 +511,7 @@ public class SFTPv3Client
 		int rep_id = tr.readUINT32();
 		if (rep_id != req_id)
 		{
-			throw new IOException("The server sent an invalid id field.");
+			throw new RequestMismatchException();
 		}
 
 		if (t == Packet.SSH_FXP_NAME)
@@ -528,7 +528,7 @@ public class SFTPv3Client
 
 		if (t != Packet.SSH_FXP_STATUS)
 		{
-			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+			throw new PacketTypeException(t);
 		}
 
 		int errorCode = tr.readUINT32();
@@ -549,12 +549,12 @@ public class SFTPv3Client
 		int rep_id = tr.readUINT32();
 		if (rep_id != id)
 		{
-			throw new IOException("The server sent an invalid id field.");
+			throw new RequestMismatchException();
 		}
 
 		if (t != Packet.SSH_FXP_STATUS)
 		{
-			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+			throw new PacketTypeException(t);
 		}
 
 		int errorCode = tr.readUINT32();
@@ -671,7 +671,7 @@ public class SFTPv3Client
 		int rep_id = tr.readUINT32();
 		if (rep_id != req_id)
 		{
-			throw new IOException("The server sent an invalid id field.");
+			throw new RequestMismatchException();
 		}
 
 		if (t == Packet.SSH_FXP_NAME)
@@ -690,7 +690,7 @@ public class SFTPv3Client
 
 		if (t != Packet.SSH_FXP_STATUS)
 		{
-			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+			throw new PacketTypeException(t);
 		}
 
 		int errorCode = tr.readUINT32();
@@ -723,7 +723,7 @@ public class SFTPv3Client
 			int rep_id = tr.readUINT32();
 			if (rep_id != req_id)
 			{
-				throw new IOException("The server sent an invalid id field.");
+				throw new RequestMismatchException();
 			}
 
 			if (t == Packet.SSH_FXP_NAME)
@@ -750,7 +750,7 @@ public class SFTPv3Client
 
 			if (t != Packet.SSH_FXP_STATUS)
 			{
-				throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+				throw new PacketTypeException(t);
 			}
 
 			int errorCode = tr.readUINT32();
@@ -785,7 +785,7 @@ public class SFTPv3Client
 		int rep_id = tr.readUINT32();
 		if (rep_id != req_id)
 		{
-			throw new IOException("The server sent an invalid id field.");
+			throw new RequestMismatchException();
 		}
 
 		if (t == Packet.SSH_FXP_HANDLE)
@@ -796,7 +796,7 @@ public class SFTPv3Client
 
 		if (t != Packet.SSH_FXP_STATUS)
 		{
-			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+			throw new PacketTypeException(t);
 		}
 
 		int errorCode = tr.readUINT32();
@@ -819,7 +819,7 @@ public class SFTPv3Client
 			}
 			else
 			{
-				sb.append("{0x" + Integer.toHexString(c) + "}");
+				sb.append(String.format("{0x%s}", Integer.toHexString(c)));
 			}
 		}
 
@@ -1231,7 +1231,7 @@ public class SFTPv3Client
 		int rep_id = tr.readUINT32();
 		if (rep_id != req_id)
 		{
-			throw new IOException("The server sent an invalid id field.");
+			throw new RequestMismatchException();
 		}
 
 		if (t == Packet.SSH_FXP_HANDLE)
@@ -1242,7 +1242,7 @@ public class SFTPv3Client
 
 		if (t != Packet.SSH_FXP_STATUS)
 		{
-			throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+			throw new PacketTypeException(t);
 		}
 
 		int errorCode = tr.readUINT32();
@@ -1396,7 +1396,7 @@ public class SFTPv3Client
 			OutstandingReadRequest req = pendingReadQueue.remove(tr.readUINT32());
 			if (null == req)
 			{
-				throw new IOException("The server sent an invalid id field.");
+				throw new RequestMismatchException();
 			}
 			// Evaluate the answer
 			if (t == Packet.SSH_FXP_STATUS)
@@ -1458,7 +1458,7 @@ public class SFTPv3Client
 			}
 			else
 			{
-				throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+				throw new PacketTypeException(t);
 			}
 		}
 		// Should never reach here.
@@ -1539,7 +1539,7 @@ public class SFTPv3Client
 		OutstandingStatusRequest status = pendingStatusQueue.remove(tr.readUINT32());
 		if (null == status)
 		{
-			throw new IOException("The server sent an invalid id field.");
+			throw new RequestMismatchException();
 		}
 
 		// Evaluate the answer
@@ -1560,7 +1560,7 @@ public class SFTPv3Client
 			listener.read(msg);
 			throw new SFTPException(msg, code);
 		}
-		throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+		throw new PacketTypeException(t);
 	}
 
 	private void readPendingReadStatus() throws IOException
@@ -1575,7 +1575,7 @@ public class SFTPv3Client
         OutstandingReadRequest status = pendingReadQueue.remove(tr.readUINT32());
         if (null == status)
 		{
-			throw new IOException("The server sent an invalid id field.");
+			throw new RequestMismatchException();
 		}
 
 		// Evaluate the answer
@@ -1600,7 +1600,7 @@ public class SFTPv3Client
 			listener.read(msg);
 			throw new SFTPException(msg, code);
 		}
-		throw new IOException("The SFTP server sent an unexpected packet type (" + t + ")");
+		throw new PacketTypeException(t);
 	}
 
 	/**
