@@ -78,15 +78,15 @@ public class SCPInputStream extends BufferedInputStream
 			return -1;
 		}
 
-		int read = super.read();
-		if (read < 0)
+		int b = super.read();
+		if (b < 0)
 		{
 			throw new IOException("Remote scp terminated connection unexpectedly");
 		}
 
-		remaining -= read;
+		remaining -= 1;
 
-		return read;
+		return b;
 	}
 
 	@Override
