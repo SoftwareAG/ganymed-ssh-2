@@ -16,11 +16,11 @@ import ch.ethz.ssh2.crypto.PEMDecoder;
 import ch.ethz.ssh2.server.ServerConnectionState;
 import ch.ethz.ssh2.signature.DSAPrivateKey;
 import ch.ethz.ssh2.signature.RSAPrivateKey;
-import ch.ethz.ssh2.transport.TransportManager;
+import ch.ethz.ssh2.transport.ServerTransportManager;
 
 /**
  * A server-side SSH-2 connection.
- * 
+ *
  * @author Christian
  *
  */
@@ -39,9 +39,9 @@ public class ServerConnection
 	 * <p>
 	 * Note: you need to call {@link #connect()} or {@link #connect(int)} to
 	 * perform the initial handshake and establish the encrypted communication.
-	 * 
+	 *
 	 * @see #connect(int)
-	 * 
+	 *
 	 * @param s The socket
 	 */
 	public ServerConnection(Socket s)
@@ -62,9 +62,9 @@ public class ServerConnection
 	 * perform the initial handshake and establish the encrypted communication.
 	 * <p>
 	 * Please read the javadoc for the {@link #connect(int)} method.
-	 * 
+	 *
 	 * @see #connect(int)
-	 *  
+	 *
 	 * @param s The socket
 	 * @param dsa_key The DSA hostkey, may be <code>NULL</code>
 	 * @param rsa_key The RSA hostkey, may be <code>NULL</code>
@@ -84,9 +84,9 @@ public class ServerConnection
 	 * Note: this is a wrapper that calls <code>connect(0)</code> (i.e., connect with no timeout).
 	 * <p>
 	 * Please read the javadoc for the {@link #connect(int)} method.
-	 * 
+	 *
 	 * @see #connect(int)
-	 * 
+	 *
 	 * @throws IOException
 	 */
 	public synchronized void connect() throws IOException
@@ -101,12 +101,12 @@ public class ServerConnection
 	 * <p>
 	 * Note 2: You must set the callbacks for authentication ({@link #setAuthenticationCallback(ServerAuthenticationCallback)})
 	 * and connection events ({@link #setServerConnectionCallback(ServerConnectionCallback)}).
-	 * 
+	 *
 	 * @see #setPEMHostKey(char[], String)
 	 * @see #setPEMHostKey(File, String)
 	 * @see #setRsaHostKey(RSAPrivateKey)
 	 * @see #setDsaHostKey(DSAPrivateKey)
-	 * 
+	 *
 	 * @param timeout_milliseconds Timeout in milliseconds, <code>0</code> means no timeout.
 	 * @throws IOException
 	 */
@@ -126,14 +126,10 @@ public class ServerConnection
 			if ((state.next_dsa_key == null) && (state.next_rsa_key == null))
 				throw new IllegalStateException("Neither a RSA nor a DSA host key has been specified!");
 
-			state.tm = new TransportManager();
+			state.tm = new ServerTransportManager(state.s);
 		}
 
-		//tm.setSoTimeout(connectTimeout);
-		//tm.setConnectionMonitors(connectionMonitors);
-
-		state.tm.setTcpNoDelay(true);
-		state.tm.serverInit(state);
+		state.tm.connect(state);
 
 		/* Wait until first KEX has finished */
 
@@ -142,7 +138,7 @@ public class ServerConnection
 
 	/**
 	 * Retrieve the underlying socket.
-	 * 
+	 *
 	 * @return the socket that has been passed to the constructor.
 	 */
 	public Socket getSocket()
@@ -160,7 +156,7 @@ public class ServerConnection
 	 * <p>
 	 * Note: This implementation will never start automatically a key exchange (other than the initial one)
 	 * unless you or the connected SSH-2 client ask for it.
-	 * 
+	 *
 	 * @throws IOException
 	 *             In case of any failure behind the scenes.
 	 */
@@ -179,10 +175,10 @@ public class ServerConnection
 	/**
 	 * Returns a {@link ConnectionInfo} object containing the details of
 	 * the connection. May be called as soon as the first key exchange has been
-	 * started. The method blocks in case the first key exchange has not been completed. 
+	 * started. The method blocks in case the first key exchange has not been completed.
 	 * <p>
 	 * Note: upon return of this method, authentication may still be pending.
-	 * 
+	 *
 	 * @return A {@link ConnectionInfo} object.
 	 * @throws IOException
 	 *             In case of any failure behind the scenes; e.g., first key exchange was aborted.
@@ -201,12 +197,12 @@ public class ServerConnection
 
 	/**
 	 * Change the current DSA hostkey. Either a DSA or RSA private key must be set for a successful handshake with
-	 * the client. 
+	 * the client.
 	 * <p>
 	 * Note: You can change an existing DSA hostkey after the initial kex exchange (the new value will
 	 * be used during the next server initiated key exchange), but you cannot remove (i.e., set to <code>null</code>) the
 	 * current DSA key, otherwise the next key exchange may fail in case the client supports only DSA hostkeys.
-	 * 
+	 *
 	 * @param dsa_hostkey
 	 */
 	public synchronized void setDsaHostKey(DSAPrivateKey dsa_hostkey)
@@ -223,12 +219,12 @@ public class ServerConnection
 
 	/**
 	 * Change the current RSA hostkey. Either a DSA or RSA private key must be set for a successful handshake with
-	 * the client. 
+	 * the client.
 	 * <p>
 	 * Note: You can change an existing RSA hostkey after the initial kex exchange (the new value will
 	 * be used during the next server initiated key exchange), but you cannot remove (i.e., set to <code>null</code>) the
 	 * current RSA key, otherwise the next key exchange may fail in case the client supports only RSA hostkeys.
-	 * 
+	 *
 	 * @param rsa_hostkey
 	 */
 	public synchronized void setRsaHostKey(RSAPrivateKey rsa_hostkey)
@@ -246,8 +242,8 @@ public class ServerConnection
 	/**
 	 * Utility method that loads a PEM based hostkey (either RSA or DSA based) and
 	 * calls either <code>setRsaHostKey()</code> or <code>setDsaHostKey()</code>.
-	 * 
-	 * @param pemfile The PEM data
+	 *
+	 * @param pemdata The PEM data
 	 * @param password Password, may be null in case the PEM data is not password protected
 	 * @throws IOException In case of any error.
 	 */
@@ -265,7 +261,7 @@ public class ServerConnection
 	/**
 	 * Utility method that loads a hostkey from a PEM file (either RSA or DSA based) and
 	 * calls either <code>setRsaHostKey()</code> or <code>setDsaHostKey()</code>.
-	 * 
+	 *
 	 * @param pemFile The PEM file
 	 * @param password Password, may be null in case the PEM file is not password protected
 	 * @throws IOException
@@ -312,7 +308,7 @@ public class ServerConnection
 	 * generated by the client (e.g., client opens a new Session which results in a <code>ServerSession</code>).
 	 * <p>
 	 * Note: This must be set before the first handshake.
-	 * 
+	 *
 	 * @param cb The callback implementation
 	 */
 	public synchronized void setServerConnectionCallback(ServerConnectionCallback cb)
@@ -327,7 +323,7 @@ public class ServerConnection
 	 * Callback interface with methods that will be called upon authentication events.
 	 * <p>
 	 * Note: This must be set before the first handshake.
-	 * 
+	 *
 	 * @param cb The callback implementation
 	 */
 	public synchronized void setAuthenticationCallback(ServerAuthenticationCallback cb)

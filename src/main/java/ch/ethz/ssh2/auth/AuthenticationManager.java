@@ -30,15 +30,15 @@ import ch.ethz.ssh2.signature.DSASignature;
 import ch.ethz.ssh2.signature.RSAPrivateKey;
 import ch.ethz.ssh2.signature.RSASHA1Verify;
 import ch.ethz.ssh2.signature.RSASignature;
+import ch.ethz.ssh2.transport.ClientTransportManager;
 import ch.ethz.ssh2.transport.MessageHandler;
-import ch.ethz.ssh2.transport.TransportManager;
 
 /**
  * @author Christian Plattner
  */
 public class AuthenticationManager implements MessageHandler
 {
-	private TransportManager tm;
+	private ClientTransportManager tm;
 
 	private final List<byte[]> packets = new ArrayList<byte[]>();
 	private boolean connectionClosed = false;
@@ -51,7 +51,7 @@ public class AuthenticationManager implements MessageHandler
 	private boolean authenticated = false;
 	private boolean initDone = false;
 
-	public AuthenticationManager(TransportManager tm)
+	public AuthenticationManager(ClientTransportManager tm)
 	{
 		this.tm = tm;
 	}
@@ -327,7 +327,7 @@ public class AuthenticationManager implements MessageHandler
 		}
 		catch (IOException e)
 		{
-			tm.close(e, false);
+			tm.close(e);
 			throw new IOException("Publickey authentication failed.", e);
 		}
 	}
@@ -341,7 +341,7 @@ public class AuthenticationManager implements MessageHandler
 		}
 		catch (IOException e)
 		{
-			tm.close(e, false);
+			tm.close(e);
 			throw new IOException("None authentication failed.", e);
 		}
 	}
@@ -382,7 +382,7 @@ public class AuthenticationManager implements MessageHandler
 		}
 		catch (IOException e)
 		{
-			tm.close(e, false);
+			tm.close(e);
 			throw new IOException("Password authentication failed.", e);
 		}
 	}
@@ -456,7 +456,7 @@ public class AuthenticationManager implements MessageHandler
 		}
 		catch (IOException e)
 		{
-			tm.close(e, false);
+			tm.close(e);
 			throw new IOException("Keyboard-interactive authentication failed.", e);
 		}
 	}

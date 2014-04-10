@@ -16,7 +16,7 @@ import ch.ethz.ssh2.crypto.CryptoWishList;
 import ch.ethz.ssh2.signature.DSAPrivateKey;
 import ch.ethz.ssh2.signature.RSAPrivateKey;
 import ch.ethz.ssh2.transport.ClientServerHello;
-import ch.ethz.ssh2.transport.TransportManager;
+import ch.ethz.ssh2.transport.ServerTransportManager;
 
 public class ServerConnectionState
 {
@@ -38,7 +38,7 @@ public class ServerConnectionState
 	public Socket s;
 	
 	public ClientServerHello csh;
-	public TransportManager tm;
+	public ServerTransportManager tm;
 	public ServerAuthenticationManager am;
 	public ChannelManager cm;
 	
