@@ -838,11 +838,7 @@ public class Connection
 	public synchronized LocalPortForwarder createLocalPortForwarder(int local_port, String host_to_connect,
 			int port_to_connect) throws IOException
 	{
-		if (tm == null)
-			throw new IllegalStateException("Cannot forward ports, you need to establish a connection first.");
-
-		if (!authenticated)
-			throw new IllegalStateException("Cannot forward ports, connection is not authenticated.");
+        this.checkConnection();
 
 		return new LocalPortForwarder(cm, local_port, host_to_connect, port_to_connect);
 	}
@@ -865,11 +861,7 @@ public class Connection
 	public synchronized LocalPortForwarder createLocalPortForwarder(InetSocketAddress addr, String host_to_connect,
 			int port_to_connect) throws IOException
 	{
-		if (tm == null)
-			throw new IllegalStateException("Cannot forward ports, you need to establish a connection first.");
-
-		if (!authenticated)
-			throw new IllegalStateException("Cannot forward ports, connection is not authenticated.");
+        this.checkConnection();
 
 		return new LocalPortForwarder(cm, addr, host_to_connect, port_to_connect);
 	}
@@ -888,11 +880,7 @@ public class Connection
 	public synchronized LocalStreamForwarder createLocalStreamForwarder(String host_to_connect, int port_to_connect)
 			throws IOException
 	{
-		if (tm == null)
-			throw new IllegalStateException("Cannot forward, you need to establish a connection first.");
-
-		if (!authenticated)
-			throw new IllegalStateException("Cannot forward, connection is not authenticated.");
+        this.checkConnection();
 
 		return new LocalStreamForwarder(cm, host_to_connect, port_to_connect);
 	}
@@ -911,11 +899,7 @@ public class Connection
 	 */
 	public synchronized SCPClient createSCPClient() throws IOException
 	{
-		if (tm == null)
-			throw new IllegalStateException("Cannot create SCP client, you need to establish a connection first.");
-
-		if (!authenticated)
-			throw new IllegalStateException("Cannot create SCP client, connection is not authenticated.");
+        this.checkConnection();
 
 		return new SCPClient(this);
 	}
@@ -935,8 +919,7 @@ public class Connection
 	 */
 	public synchronized void forceKeyExchange() throws IOException
 	{
-		if (tm == null)
-			throw new IllegalStateException("You need to establish a connection first.");
+        this.checkConnection();
 
 		tm.forceKeyExchange(cryptoWishList, dhgexpara, null, null);
 	}
@@ -972,9 +955,8 @@ public class Connection
 	 */
 	public synchronized ConnectionInfo getConnectionInfo() throws IOException
 	{
-		if (tm == null)
-			throw new IllegalStateException(
-					"Cannot get details of connection, you need to establish a connection first.");
+        this.checkConnection();
+
 		return tm.getConnectionInfo(1);
 	}
 
@@ -1074,11 +1056,11 @@ public class Connection
 
 		String methods[] = getRemainingAuthMethods(user);
 
-		for (int i = 0; i < methods.length; i++)
-		{
-			if (methods[i].compareTo(method) == 0)
-				return true;
-		}
+        for(final String m : methods) {
+            if(m.compareTo(method) == 0) {
+                return true;
+            }
+        }
 
 		return false;
 	}
@@ -1101,11 +1083,7 @@ public class Connection
 	 */
 	public synchronized Session openSession() throws IOException
 	{
-		if (tm == null)
-			throw new IllegalStateException("Cannot open session, you need to establish a connection first.");
-
-		if (!authenticated)
-			throw new IllegalStateException("Cannot open session, connection is not authenticated.");
+        this.checkConnection();
 
 		return new Session(cm, getOrCreateSecureRND());
 	}
@@ -1137,12 +1115,7 @@ public class Connection
 	 */
 	public synchronized void sendIgnorePacket(byte[] data) throws IOException
 	{
-		if (data == null)
-			throw new IllegalArgumentException("data argument must not be null.");
-
-		if (tm == null)
-			throw new IllegalStateException(
-					"Cannot send SSH_MSG_IGNORE packet, you need to establish a connection first.");
+        this.checkConnection();
 
 		PacketIgnore pi = new PacketIgnore();
 		pi.setData(data);
@@ -1167,26 +1140,21 @@ public class Connection
 
 		int count = 0;
 
-		for (int i = 0; i < list.length; i++)
-		{
-			boolean duplicate = false;
+        for(final String element : list) {
+            boolean duplicate = false;
+            for(int j = 0; j < count; j++) {
+                if(((element == null) && (list2[j] == null)) || ((element != null) && (element.equals(list2[j])))) {
+                    duplicate = true;
+                    break;
+                }
+            }
 
-			String element = list[i];
+            if(duplicate) {
+                continue;
+            }
 
-			for (int j = 0; j < count; j++)
-			{
-				if (((element == null) && (list2[j] == null)) || ((element != null) && (element.equals(list2[j]))))
-				{
-					duplicate = true;
-					break;
-				}
-			}
-
-			if (duplicate)
-				continue;
-
-			list2[count++] = list[i];
-		}
+            list2[count++] = element;
+        }
 
 		if (count == list2.length)
 			return list2;
@@ -1370,11 +1338,7 @@ public class Connection
 	public synchronized void requestRemotePortForwarding(String bindAddress, int bindPort, String targetAddress,
 			int targetPort) throws IOException
 	{
-		if (tm == null)
-			throw new IllegalStateException("You need to establish a connection first.");
-
-		if (!authenticated)
-			throw new IllegalStateException("The connection is not authenticated.");
+        this.checkConnection();
 
 		if ((bindAddress == null) || (targetAddress == null) || (bindPort <= 0) || (targetPort <= 0))
 			throw new IllegalArgumentException();
@@ -1394,11 +1358,7 @@ public class Connection
 	 */
 	public synchronized void cancelRemotePortForwarding(int bindPort) throws IOException
 	{
-		if (tm == null)
-			throw new IllegalStateException("You need to establish a connection first.");
-
-		if (!authenticated)
-			throw new IllegalStateException("The connection is not authenticated.");
+        this.checkConnection();
 
 		cm.requestCancelGlobalForward(bindPort);
 	}
@@ -1419,4 +1379,13 @@ public class Connection
 
 		this.generator = rnd;
 	}
+
+    private void checkConnection() throws IllegalStateException {
+        if (tm == null) {
+            throw new IllegalStateException("You need to establish a connection first.");
+        }
+        if (!authenticated) {
+            throw new IllegalStateException("The connection is not authenticated.");
+        }
+    }
 }
