@@ -95,7 +95,7 @@ public class TransportManager
 		{
 			while (true)
 			{
-				AsynchronousEntry item = null;
+				AsynchronousEntry item;
 
 				synchronized (asynchronousQueue)
 				{
@@ -463,7 +463,7 @@ public class TransportManager
 				throw new IOException("The proxy did not send back a valid HTTP response.");
 			}
 
-			int errorCode = 0;
+			int errorCode;
 
 			try
 			{
@@ -510,7 +510,7 @@ public class TransportManager
 				{
 					receiveLoop();
 				}
-				catch (Exception e)
+				catch (IOException e)
 				{
 					close(e, false);
 
@@ -541,7 +541,7 @@ public class TransportManager
 					{
 						he.mh.handleMessage(null, 0);
 					}
-					catch (Exception ignore)
+					catch (IOException ignored)
 					{
 					}
 				}
@@ -759,6 +759,7 @@ public class TransportManager
 				}
 				catch (InterruptedException e)
 				{
+                    throw new InterruptedIOException(e.getMessage());
 				}
 			}
 		}
@@ -933,15 +934,12 @@ public class TransportManager
 
 			MessageHandler mh = null;
 
-			for (int i = 0; i < messageHandlers.size(); i++)
-			{
-				HandlerEntry he = messageHandlers.get(i);
-				if ((he.low <= type) && (type <= he.high))
-				{
-					mh = he.mh;
-					break;
-				}
-			}
+            for(HandlerEntry he : messageHandlers) {
+                if((he.low <= type) && (type <= he.high)) {
+                    mh = he.mh;
+                    break;
+                }
+            }
 
 			if (mh == null)
 			{
