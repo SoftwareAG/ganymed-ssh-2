@@ -271,7 +271,7 @@ public class SFTPv3Client
 
 		if ((len > maxlen) || (len <= 0))
 		{
-			throw new IOException("Illegal sftp packet len: " + len);
+			throw new PacketFormatException(String.format("Illegal SFTP packet length %d", len));
 		}
 
 		byte[] msg = new byte[len];
@@ -520,7 +520,7 @@ public class SFTPv3Client
 
 			if (count != 1)
 			{
-				throw new IOException("The server sent an invalid SSH_FXP_NAME packet.");
+				throw new PacketTypeException(t);
 			}
 
 			return tr.readString(charsetName);
@@ -656,7 +656,7 @@ public class SFTPv3Client
 
 		TypesWriter tw = new TypesWriter();
 		tw.writeString("hardlink@openssh.com", charsetName);
-        tw.writeString(target, charsetName);
+		tw.writeString(target, charsetName);
 		tw.writeString(src, charsetName);
 
 		log.debug("Sending SSH_FXP_EXTENDED...");
@@ -703,9 +703,8 @@ public class SFTPv3Client
 
 			if (count != 1)
 			{
-				throw new IOException("The server sent an invalid SSH_FXP_NAME packet.");
+				throw new PacketFormatException("The server sent an invalid SSH_FXP_NAME packet.");
 			}
-
 			final String name = tr.readString(charsetName);
 			listener.read(name);
 			return name;
@@ -870,7 +869,8 @@ public class SFTPv3Client
 
 		if (t != Packet.SSH_FXP_VERSION)
 		{
-			throw new IOException("The server did not send a SSH_FXP_VERSION packet (got " + t + ")");
+			log.warning(String.format("The server did not send a SSH_FXP_VERSION but %d", t));
+			throw new PacketTypeException(t);
 		}
 
 		protocol_version = tr.readUINT32();
@@ -878,7 +878,7 @@ public class SFTPv3Client
 		log.debug("SSH_FXP_VERSION: protocol_version = " + protocol_version);
 		if (protocol_version != 3)
 		{
-			throw new IOException("Server version " + protocol_version + " is currently not supported");
+			throw new IOException(String.format("Server version %d is currently not supported", protocol_version));
 		}
 
 		/* Read and save extensions (if any) for later use */
@@ -888,7 +888,7 @@ public class SFTPv3Client
 			String name = tr.readString();
 			listener.read(name);
 			byte[] value = tr.readByteString();
-			log.debug("SSH_FXP_VERSION: extension: " + name + " = '" + expandString(value, 0, value.length) + "'");
+			log.debug(String.format("SSH_FXP_VERSION: extension: %s = '%s'", name, expandString(value, 0, value.length)));
 		}
 	}
 
@@ -904,9 +904,11 @@ public class SFTPv3Client
 
 	/**
 	 * Queries the channel state
+	 *
 	 * @return True if the underlying session is in open state
 	 */
-	public boolean isConnected() {
+	public boolean isConnected()
+	{
 		return sess.getState() == Channel.STATE_OPEN;
 	}
 
@@ -932,8 +934,8 @@ public class SFTPv3Client
 	 */
 	public List<SFTPv3DirectoryEntry> ls(String dirName) throws IOException
 	{
-        SFTPv3FileHandle handle = openDirectory(dirName);
-        List<SFTPv3DirectoryEntry> result = scanDirectory(handle.fileHandle);
+		SFTPv3FileHandle handle = openDirectory(dirName);
+		List<SFTPv3DirectoryEntry> result = scanDirectory(handle.fileHandle);
 		closeFile(handle);
 		return result;
 	}
@@ -1353,7 +1355,7 @@ public class SFTPv3Client
 	 * @param dstoff offset in the destination byte array
 	 * @param len how many bytes to read, 0 &lt; len
 	 * @return the number of bytes that could be read, may be less than requested if
-	 *         the end of the file is reached, -1 is returned in case of <code>EOF</code>
+	 * the end of the file is reached, -1 is returned in case of <code>EOF</code>
 	 * @throws IOException
 	 */
 	public int read(SFTPv3FileHandle handle, long fileOffset, byte[] dst, int dstoff, int len) throws IOException
@@ -1453,7 +1455,7 @@ public class SFTPv3Client
 
 				if ((readLen < 0) || (readLen > req.len))
 				{
-					throw new IOException("The server sent an invalid length field in a SSH_FXP_DATA packet.");
+					throw new PacketFormatException("The server sent an invalid length field in a SSH_FXP_DATA packet.");
 				}
 
 				if (log.isDebugEnabled())
@@ -1518,36 +1520,38 @@ public class SFTPv3Client
 	{
 		checkHandleValidAndOpen(handle);
 
-        while (len > 0) {
-            int writeRequestLen = len;
+		while (len > 0)
+		{
+			int writeRequestLen = len;
 
-            if (writeRequestLen > 32768) {
-                writeRequestLen = 32768;
-            }
+			if (writeRequestLen > 32768)
+			{
+				writeRequestLen = 32768;
+			}
 
-            // Send the next write request
-            OutstandingStatusRequest req = new OutstandingStatusRequest();
-            req.req_id = generateNextRequestID();
+			// Send the next write request
+			OutstandingStatusRequest req = new OutstandingStatusRequest();
+			req.req_id = generateNextRequestID();
 
-            TypesWriter tw = new TypesWriter();
-            tw.writeString(handle.fileHandle, 0, handle.fileHandle.length);
-            tw.writeUINT64(fileOffset);
-            tw.writeString(src, srcoff, writeRequestLen);
+			TypesWriter tw = new TypesWriter();
+			tw.writeString(handle.fileHandle, 0, handle.fileHandle.length);
+			tw.writeUINT64(fileOffset);
+			tw.writeString(src, srcoff, writeRequestLen);
 
-            log.debug("Sending SSH_FXP_WRITE...");
-            sendMessage(Packet.SSH_FXP_WRITE, req.req_id, tw.getBytes());
+			log.debug("Sending SSH_FXP_WRITE...");
+			sendMessage(Packet.SSH_FXP_WRITE, req.req_id, tw.getBytes());
 
-            pendingStatusQueue.put(req.req_id, req);
+			pendingStatusQueue.put(req.req_id, req);
 
-            // Only read next status if parallelism reached
-            while (pendingStatusQueue.size() >= parallelism)
-            {
-                this.readStatus();
-            }
-            fileOffset += writeRequestLen;
-            srcoff += writeRequestLen;
-            len -= writeRequestLen;
-        }
+			// Only read next status if parallelism reached
+			while (pendingStatusQueue.size() >= parallelism)
+			{
+				this.readStatus();
+			}
+			fileOffset += writeRequestLen;
+			srcoff += writeRequestLen;
+			len -= writeRequestLen;
+		}
 	}
 
 	private void readStatus() throws IOException
@@ -1595,8 +1599,8 @@ public class SFTPv3Client
 		listener.read(Packet.forName(t));
 
 		// Search the pending queue
-        OutstandingReadRequest status = pendingReadQueue.remove(tr.readUINT32());
-        if (null == status)
+		OutstandingReadRequest status = pendingReadQueue.remove(tr.readUINT32());
+		if (null == status)
 		{
 			throw new RequestMismatchException();
 		}
@@ -1615,10 +1619,10 @@ public class SFTPv3Client
 			{
 				return;
 			}
-            if (code == ErrorCodes.SSH_FX_EOF)
-            {
-                return;
-            }
+			if (code == ErrorCodes.SSH_FX_EOF)
+			{
+				return;
+			}
 			String msg = tr.readString();
 			listener.read(msg);
 			throw new SFTPException(msg, code);
