@@ -427,14 +427,23 @@ public class AuthenticationManager implements MessageHandler
 				}
 
 				if (ar[0] == Packets.SSH_MSG_USERAUTH_INFO_REQUEST)
-                {
-                    PacketUserauthInfoRequest pui = new PacketUserauthInfoRequest(ar, 0, ar.length);
+				{
+					PacketUserauthInfoRequest pui = new PacketUserauthInfoRequest(ar, 0, ar.length);
 
-                    String[] responses = cb.replyToChallenge(pui.getName(), pui.getInstruction(), pui.getNumPrompts(), pui
-                            .getPrompt(), pui.getEcho());
+					String[] responses;
 
-                    PacketUserauthInfoResponse puir = new PacketUserauthInfoResponse(responses);
-                    tm.sendMessage(puir.getPayload());
+					try
+					{
+						responses = cb.replyToChallenge(pui.getName(), pui.getInstruction(), pui.getNumPrompts(), pui
+								.getPrompt(), pui.getEcho());
+					}
+					catch (Exception e)
+					{
+						throw new IOException("Exception in callback.", e);
+					}
+
+					PacketUserauthInfoResponse puir = new PacketUserauthInfoResponse(responses);
+					tm.sendMessage(puir.getPayload());
 
 					continue;
 				}

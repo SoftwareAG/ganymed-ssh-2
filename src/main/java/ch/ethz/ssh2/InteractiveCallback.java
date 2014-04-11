@@ -53,5 +53,6 @@ public interface InteractiveCallback
 	 * @return an array of reponses - the array size must match the parameter
 	 *         <code>numPrompts</code>.
 	 */
-	public String[] replyToChallenge(String name, String instruction, int numPrompts, String[] prompt, boolean[] echo);
+	public String[] replyToChallenge(String name, String instruction, int numPrompts, String[] prompt, boolean[] echo)
+			throws Exception;
 }
