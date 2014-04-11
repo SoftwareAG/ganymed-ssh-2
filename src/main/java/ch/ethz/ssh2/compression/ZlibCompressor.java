@@ -1,13 +1,18 @@
 package ch.ethz.ssh2.compression;
 
+import java.io.IOException;
+
+import ch.ethz.ssh2.log.Logger;
 import com.jcraft.jzlib.JZlib;
 import com.jcraft.jzlib.ZStream;
 
 /**
  * @author Kenny Root
- * @version $Id:$
+ * @version $Id$
  */
 public class ZlibCompressor implements Compressor {
+    private static final Logger log = Logger.getLogger(ZlibCompressor.class);
+
     static private final int BUF_SIZE = 4096;
     static private final int LEVEL = 5;
 
@@ -31,7 +36,7 @@ public class ZlibCompressor implements Compressor {
         return BUF_SIZE;
     }
 
-    public int compress(byte[] buf, int start, int len, byte[] output) {
+    public int compress(byte[] buf, int start, int len, byte[] output) throws IOException {
         deflate.next_in = buf;
         deflate.next_in_index = start;
         deflate.avail_in = len - start;
@@ -51,14 +56,14 @@ public class ZlibCompressor implements Compressor {
                     outputlen += (BUF_SIZE - deflate.avail_out);
                     break;
                 default:
-                    System.err.println("compress: deflate returnd " + status);
+                    throw new IOException(String.format("Deflate returned %d", status));
             }
         }
         while(deflate.avail_out == 0);
         return outputlen;
     }
 
-    public byte[] uncompress(byte[] buffer, int start, int[] length) {
+    public byte[] uncompress(byte[] buffer, int start, int[] length) throws IOException {
         int inflated_end = 0;
 
         inflate.next_in = buffer;
@@ -98,8 +103,7 @@ public class ZlibCompressor implements Compressor {
                     length[0] = inflated_end;
                     return buffer;
                 default:
-                    System.err.println("uncompress: inflate returnd " + status);
-                    return null;
+                    throw new IOException(String.format("Inflate returned %d", status));
             }
         }
     }
