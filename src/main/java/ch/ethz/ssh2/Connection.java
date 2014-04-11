@@ -18,6 +18,7 @@ import java.util.List;
 import ch.ethz.ssh2.auth.AgentProxy;
 import ch.ethz.ssh2.auth.AuthenticationManager;
 import ch.ethz.ssh2.channel.ChannelManager;
+import ch.ethz.ssh2.compression.CompressionFactory;
 import ch.ethz.ssh2.crypto.CryptoWishList;
 import ch.ethz.ssh2.crypto.cipher.BlockCipherFactory;
 import ch.ethz.ssh2.crypto.digest.MAC;
@@ -560,13 +561,8 @@ public class Connection {
      * @see ConnectionMonitor
      */
     public synchronized void addConnectionMonitor(ConnectionMonitor cmon) {
-        if(cmon == null) {
-            throw new IllegalArgumentException("cmon argument is null");
-        }
-
         if(!connectionMonitors.contains(cmon)) {
             connectionMonitors.add(cmon);
-
             if(tm != null) {
                 tm.setConnectionMonitors(connectionMonitors);
             }
@@ -580,16 +576,10 @@ public class Connection {
      * @return whether the monitor could be removed
      */
     public synchronized boolean removeConnectionMonitor(ConnectionMonitor cmon) {
-        if(cmon == null) {
-            throw new IllegalArgumentException("cmon argument is null");
-        }
-
         boolean existed = connectionMonitors.remove(cmon);
-
         if(tm != null) {
             tm.setConnectionMonitors(connectionMonitors);
         }
-
         return existed;
     }
 
@@ -770,7 +760,7 @@ public class Connection {
                         throw new IOException("This exception will be replaced by the one below =)");
                     }
                     /* Just in case the "cancelTimeoutHandler" invocation came just a little bit
-					 * too late but the handler did not enter the semaphore yet - we can
+                     * too late but the handler did not enter the semaphore yet - we can
 					 * still stop it.
 					 */
                     state.isCancelled = true;
@@ -786,7 +776,7 @@ public class Connection {
             throw e;
         }
         catch(IOException e) {
-			/* This will also invoke any registered connection monitors */
+            /* This will also invoke any registered connection monitors */
             close(e, false);
 
             synchronized(state) {
@@ -1119,6 +1109,24 @@ public class Connection {
         System.arraycopy(list2, 0, tmp, 0, count);
 
         return tmp;
+    }
+
+    /**
+     * Controls whether compression is used on the link or not.
+     */
+    public synchronized void setCompression(String[] algorithms) {
+        CompressionFactory.checkCompressorList(algorithms);
+        cryptoWishList.c2s_comp_algos = algorithms;
+    }
+
+    public synchronized void enableCompression() {
+        cryptoWishList.c2s_comp_algos = CompressionFactory.getDefaultCompressorList();
+        cryptoWishList.s2c_comp_algos = CompressionFactory.getDefaultCompressorList();
+    }
+
+    public synchronized void disableCompression() {
+        cryptoWishList.c2s_comp_algos = new String[]{"none"};
+        cryptoWishList.s2c_comp_algos = new String[]{"none"};
     }
 
     /**

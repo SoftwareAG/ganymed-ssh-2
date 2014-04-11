@@ -15,6 +15,7 @@ import java.util.List;
 import ch.ethz.ssh2.ConnectionInfo;
 import ch.ethz.ssh2.ConnectionMonitor;
 import ch.ethz.ssh2.DHGexParameters;
+import ch.ethz.ssh2.compression.Compressor;
 import ch.ethz.ssh2.crypto.CryptoWishList;
 import ch.ethz.ssh2.crypto.cipher.BlockCipher;
 import ch.ethz.ssh2.crypto.digest.MAC;
@@ -79,7 +80,7 @@ public abstract class TransportManager {
                 synchronized(asynchronousQueue) {
                     if(asynchronousQueue.size() == 0) {
                         /* Only now we may reset the flag, since we are sure that all queued items
-						 * have been sent (there is a slight delay between de-queuing and sending,
+                         * have been sent (there is a slight delay between de-queuing and sending,
 						 * this is why we need this flag! See code below. Sending takes place outside
 						 * of this lock, this is why a test for size()==0 (from another thread) does not ensure
 						 * that all messages have been sent.
@@ -109,7 +110,7 @@ public abstract class TransportManager {
                 }
 
 				/* The following invocation may throw an IOException.
-				 * There is no point in handling it - it simply means
+                 * There is no point in handling it - it simply means
 				 * that the connection has a problem and we should stop
 				 * sending asynchronously messages. We do not need to signal that
 				 * we have exited (asynchronousThread = null): further
@@ -187,7 +188,7 @@ public abstract class TransportManager {
 
     public void close(Socket sock, Throwable cause, boolean useDisconnectPacket) {
         if(useDisconnectPacket == false) {
-			/* OK, hard shutdown - do not aquire the semaphore,
+            /* OK, hard shutdown - do not aquire the semaphore,
 			 * perhaps somebody is inside (and waits until the remote
 			 * side is ready to accept new data). */
 
@@ -366,6 +367,18 @@ public abstract class TransportManager {
 
     public void changeSendCipher(BlockCipher bc, MAC mac) {
         tc.changeSendCipher(bc, mac);
+    }
+
+    public void changeRecvCompression(Compressor comp) {
+        tc.changeRecvCompression(comp);
+    }
+
+    public void changeSendCompression(Compressor comp) {
+        tc.changeSendCompression(comp);
+    }
+
+    public void startCompression() {
+        tc.startCompression();
     }
 
     public void sendAsynchronousMessage(byte[] msg) throws IOException {
@@ -572,7 +585,9 @@ public abstract class TransportManager {
                 km.handleMessage(msg, msglen);
                 continue;
             }
-
+            if(type == Packets.SSH_MSG_USERAUTH_SUCCESS) {
+                tc.startCompression();
+            }
             MessageHandler mh = null;
 
             for(HandlerEntry he : messageHandlers) {
