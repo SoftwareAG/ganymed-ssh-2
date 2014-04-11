@@ -460,14 +460,11 @@ public class ChannelManager implements MessageHandler
 
 		synchronized (remoteForwardings)
 		{
-			Integer key = bindPort;
-
-			if (remoteForwardings.get(key) != null)
+			if (remoteForwardings.get(bindPort) != null)
 			{
 				throw new IOException("There is already a forwarding for remote port " + bindPort);
 			}
-
-			remoteForwardings.put(key, rfd);
+			remoteForwardings.put(bindPort, rfd);
 		}
 
 		synchronized (channels)
@@ -488,7 +485,7 @@ public class ChannelManager implements MessageHandler
 		{
 			synchronized (remoteForwardings)
 			{
-				remoteForwardings.remove(rfd);
+				remoteForwardings.remove(bindPort);
 			}
 			throw e;
 		}
@@ -498,7 +495,7 @@ public class ChannelManager implements MessageHandler
 
 	public void requestCancelGlobalForward(int bindPort) throws IOException
 	{
-		RemoteForwardingData rfd = null;
+		RemoteForwardingData rfd;
 
 		synchronized (remoteForwardings)
 		{
@@ -525,7 +522,7 @@ public class ChannelManager implements MessageHandler
 
 		synchronized (remoteForwardings)
 		{
-			remoteForwardings.remove(rfd);
+			remoteForwardings.remove(bindPort);
 		}
 	}
 
