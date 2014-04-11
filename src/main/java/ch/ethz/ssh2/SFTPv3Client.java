@@ -643,6 +643,29 @@ public class SFTPv3Client
 	}
 
 	/**
+	 * Create a symbolic link on the server. Creates a link "src" that points
+	 * to "target".
+	 *
+	 * @param src See the {@link SFTPv3Client comment} for the class for more details.
+	 * @param target See the {@link SFTPv3Client comment} for the class for more details.
+	 * @throws IOException
+	 */
+	public void createHardlink(String src, String target) throws IOException
+	{
+		int req_id = generateNextRequestID();
+
+		TypesWriter tw = new TypesWriter();
+		tw.writeString("hardlink@openssh.com", charsetName);
+        tw.writeString(target, charsetName);
+		tw.writeString(src, charsetName);
+
+		log.debug("Sending SSH_FXP_EXTENDED...");
+		sendMessage(Packet.SSH_FXP_EXTENDED, req_id, tw.getBytes());
+
+		expectStatusOKMessage(req_id);
+	}
+
+	/**
 	 * Have the server canonicalize any given path name to an absolute path.
 	 * This is useful for converting path names containing ".." components or
 	 * relative pathnames without a leading slash into absolute paths.
