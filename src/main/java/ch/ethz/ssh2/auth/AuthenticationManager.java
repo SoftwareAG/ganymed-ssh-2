@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ch.ethz.ssh2.InteractiveCallback;
+import ch.ethz.ssh2.PacketTypeException;
 import ch.ethz.ssh2.crypto.PEMDecoder;
 import ch.ethz.ssh2.packets.PacketServiceAccept;
 import ch.ethz.ssh2.packets.PacketServiceRequest;
@@ -158,8 +159,7 @@ public class AuthenticationManager implements MessageHandler
 				isPartialSuccess = puf.isPartialSuccess();
 				return false;
 			}
-
-			throw new IOException("Unexpected SSH message (type " + msg[0] + ")");
+			throw new PacketTypeException(msg[0]);
 		}
 		return authenticated;
 	}
@@ -223,7 +223,7 @@ public class AuthenticationManager implements MessageHandler
 
 			return false;
 		}
-		throw new IOException("Unexpected SSH message (type " + ar[0] + ")");
+		throw new PacketTypeException(ar[0]);
 	}
 
 	public boolean authenticatePublicKey(String user, char[] PEMPrivateKey, String password, SecureRandom rnd)
@@ -320,9 +320,7 @@ public class AuthenticationManager implements MessageHandler
 
 				return false;
 			}
-
-			throw new IOException("Unexpected SSH message (type " + ar[0] + ")");
-
+			throw new PacketTypeException(ar[0]);
 		}
 		catch (IOException e)
 		{
@@ -375,9 +373,7 @@ public class AuthenticationManager implements MessageHandler
 
 				return false;
 			}
-
-			throw new IOException("Unexpected SSH message (type " + ar[0] + ")");
-
+			throw new PacketTypeException(ar[0]);
 		}
 		catch (IOException e)
 		{
@@ -446,8 +442,7 @@ public class AuthenticationManager implements MessageHandler
 
 					continue;
 				}
-
-				throw new IOException("Unexpected SSH message (type " + ar[0] + ")");
+				throw new PacketTypeException(ar[0]);
 			}
 		}
 		catch (IOException e)
@@ -462,6 +457,7 @@ public class AuthenticationManager implements MessageHandler
         connectionClosed = true;
     }
 
+	@Override
     public void handleMessage(byte[] msg, int msglen) throws IOException
     {
         synchronized (packets)

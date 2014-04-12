@@ -4,6 +4,7 @@ package ch.ethz.ssh2.auth;
 import java.io.IOException;
 
 import ch.ethz.ssh2.AuthenticationResult;
+import ch.ethz.ssh2.PacketTypeException;
 import ch.ethz.ssh2.ServerAuthenticationCallback;
 import ch.ethz.ssh2.channel.ChannelManager;
 import ch.ethz.ssh2.packets.PacketServiceAccept;
@@ -62,6 +63,7 @@ public class ServerAuthenticationManager implements MessageHandler
         //
     }
 
+	@Override
     public void handleMessage(byte[] msg, int msglen) throws IOException
 	{
 		/* Ignore all authentication messages after successful auth */
@@ -142,7 +144,6 @@ public class ServerAuthenticationManager implements MessageHandler
 			sendresult(AuthenticationResult.FAILURE);
 			return;
 		}
-
-		throw new IOException("Unexpected authentication packet " + packet_type);
+		throw new PacketTypeException(packet_type);
 	}
 }
