@@ -205,13 +205,13 @@ public abstract class TransportManager {
                     //
                 }
                 connectionClosed = true;
+                synchronized(this) {
+                    for(ConnectionMonitor cmon : connectionMonitors) {
+                        cmon.connectionLost(reasonClosedCause);
+                    }
+                }
             }
             connectionSemaphore.notifyAll();
-        }
-        synchronized(this) {
-            for(ConnectionMonitor cmon : connectionMonitors) {
-                cmon.connectionLost(reasonClosedCause);
-            }
         }
     }
 
