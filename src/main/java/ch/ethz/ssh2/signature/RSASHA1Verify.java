@@ -7,6 +7,7 @@ package ch.ethz.ssh2.signature;
 import java.io.IOException;
 import java.math.BigInteger;
 
+import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.crypto.SimpleDERReader;
 import ch.ethz.ssh2.crypto.digest.SHA1;
 import ch.ethz.ssh2.log.Logger;
@@ -36,7 +37,7 @@ public class RSASHA1Verify
 		BigInteger n = tr.readMPINT();
 
 		if (tr.remain() != 0)
-			throw new IOException("Padding in RSA public key!");
+			throw new PacketFormatException("Padding in RSA public key!");
 
 		return new RSAPublicKey(e, n);
 	}
@@ -59,7 +60,7 @@ public class RSASHA1Verify
 		String sig_format = tr.readString();
 
 		if (sig_format.equals("ssh-rsa") == false)
-			throw new IOException("Peer sent wrong signature format");
+			throw new PacketFormatException("Peer sent wrong signature format");
 
 		/* S is NOT an MPINT. "The value for 'rsa_signature_blob' is encoded as a string
 		 * containing s (which is an integer, without lengths or padding, unsigned and in
@@ -69,7 +70,7 @@ public class RSASHA1Verify
 		byte[] s = tr.readByteString();
 
 		if (s.length == 0)
-			throw new IOException("Error in RSA signature, S is empty.");
+			throw new PacketFormatException("Error in RSA signature, S is empty.");
 
 		if (log.isDebugEnabled())
 		{
@@ -77,7 +78,7 @@ public class RSASHA1Verify
 		}
 
 		if (tr.remain() != 0)
-			throw new IOException("Padding in RSA signature!");
+			throw new PacketFormatException("Padding in RSA signature!");
 
 		return new RSASignature(new BigInteger(1, s));
 	}
@@ -120,7 +121,7 @@ public class RSASHA1Verify
 		int num_pad = rsa_block_len - (2 + der_header.length + sha_message.length) - 1;
 
 		if (num_pad < 8)
-			throw new IOException("Cannot sign with RSA, message too long");
+			throw new PacketFormatException("Cannot sign with RSA, message too long");
 
 		byte[] sig = new byte[der_header.length + sha_message.length + 2 + num_pad];
 
