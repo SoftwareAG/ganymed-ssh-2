@@ -57,6 +57,11 @@ public abstract class TransportManager {
         int high;
     }
 
+    /**
+     * Advertised maximum SSH packet size that the other side can send to us.
+     */
+    public static final int MAX_PACKET_SIZE = 64 * 1024;
+
     private final List<AsynchronousEntry> asynchronousQueue = new ArrayList<AsynchronousEntry>();
     private Thread asynchronousThread = null;
     private boolean asynchronousPending = false;
@@ -546,7 +551,7 @@ public abstract class TransportManager {
             }
 
 			/*
-			 * Is it a KEX Packet?
+             * Is it a KEX Packet?
 			 */
 
             if((type == Packets.SSH_MSG_KEXINIT) || (type == Packets.SSH_MSG_NEWKEYS)

@@ -237,7 +237,7 @@ public class TransportConnection {
 
         int padding_length = recv_packet_header_buffer[4] & 0xff;
 
-        if(packet_length > 35000 || packet_length < 12) {
+        if(packet_length > TransportManager.MAX_PACKET_SIZE || packet_length < 12) {
             throw new IOException("Illegal packet size! (" + packet_length + ")");
         }
 
@@ -264,7 +264,7 @@ public class TransportConnection {
 
         int padding_length = recv_packet_header_buffer[4] & 0xff;
 
-        if(packet_length > 35000 || packet_length < 12) {
+        if(packet_length > TransportManager.MAX_PACKET_SIZE || packet_length < 12) {
             throw new IOException("Illegal packet size! (" + packet_length + ")");
         }
 
