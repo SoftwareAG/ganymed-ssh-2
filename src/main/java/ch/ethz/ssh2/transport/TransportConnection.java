@@ -171,7 +171,7 @@ public class TransportConnection {
         if(useRandomPadding) {
             for(int i = 0; i < padd_len; i = i + 4) {
                 /*
-				 * don't waste calls to rnd.nextInt() (by using only 8bit of the
+                 * don't waste calls to rnd.nextInt() (by using only 8bit of the
 				 * output). just believe me: even though we may write here up to 3
 				 * bytes which won't be used, there is no "buffer overflow" (i.e.,
 				 * arrayindexoutofbounds). the padding buffer is big enough =) (256
@@ -307,13 +307,7 @@ public class TransportConnection {
         if(recv_comp != null && can_compress) {
             int[] uncomp_len = new int[]{payload_length};
             buffer = recv_comp.uncompress(buffer, off, uncomp_len);
-
-            if(buffer == null) {
-                throw new IOException("Error while inflating remote data");
-            }
-            else {
-                return uncomp_len[0];
-            }
+            return uncomp_len[0];
         }
         else {
             return payload_length;
