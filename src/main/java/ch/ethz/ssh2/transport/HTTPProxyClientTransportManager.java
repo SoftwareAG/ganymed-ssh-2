@@ -3,7 +3,6 @@ package ch.ethz.ssh2.transport;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 import ch.ethz.ssh2.HTTPProxyData;
@@ -12,105 +11,115 @@ import ch.ethz.ssh2.crypto.Base64;
 import ch.ethz.ssh2.util.StringEncoder;
 
 /**
- * @version $Id:$
+ * @version $Id$
  */
-public class HTTPProxyClientTransportManager extends ClientTransportManager {
+public class HTTPProxyClientTransportManager extends ClientTransportManager
+{
 
-    /**
-     * Used to tell the library that the connection shall be established through a proxy server.
-     */
+	/**
+	 * Used to tell the library that the connection shall be established through a proxy server.
+	 */
 
-    private HTTPProxyData pd;
+	private HTTPProxyData pd;
 
-    public HTTPProxyClientTransportManager(final HTTPProxyData pd) {
-        this.pd = pd;
-    }
+	public HTTPProxyClientTransportManager(final HTTPProxyData pd)
+	{
+		this.pd = pd;
+	}
 
-    @Override
-    protected void connect(final String hostname, final int port, final int connectTimeout) throws IOException {
+	@Override
+	protected void connect(final String hostname, final int port, final int connectTimeout) throws IOException
+	{
 
-		/* At the moment, we only support HTTP proxies */
+		sock.connect(new InetSocketAddress(pd.proxyHost, pd.proxyPort), connectTimeout);
 
-        InetAddress addr = createInetAddress(pd.proxyHost);
-        sock.connect(new InetSocketAddress(addr, pd.proxyPort), connectTimeout);
+		// Tell the proxy where we actually want to connect to
+		StringBuilder sb = new StringBuilder();
 
-		/* OK, now tell the proxy where we actually want to connect to */
+		sb.append("CONNECT ");
+		sb.append(hostname);
+		sb.append(':');
+		sb.append(port);
+		sb.append(" HTTP/1.0\r\n");
 
-        StringBuilder sb = new StringBuilder();
+		if ((pd.proxyUser != null) && (pd.proxyPass != null))
+		{
+			String credentials = pd.proxyUser + ":" + pd.proxyPass;
+			char[] encoded = Base64.encode(StringEncoder.GetBytes(credentials));
+			sb.append("Proxy-Authorization: Basic ");
+			sb.append(encoded);
+			sb.append("\r\n");
+		}
 
-        sb.append("CONNECT ");
-        sb.append(hostname);
-        sb.append(':');
-        sb.append(port);
-        sb.append(" HTTP/1.0\r\n");
+		if (pd.requestHeaderLines != null)
+		{
+			for (int i = 0; i < pd.requestHeaderLines.length; i++)
+			{
+				if (pd.requestHeaderLines[i] != null)
+				{
+					sb.append(pd.requestHeaderLines[i]);
+					sb.append("\r\n");
+				}
+			}
+		}
 
-        if((pd.proxyUser != null) && (pd.proxyPass != null)) {
-            String credentials = pd.proxyUser + ":" + pd.proxyPass;
-            char[] encoded = Base64.encode(StringEncoder.GetBytes(credentials));
-            sb.append("Proxy-Authorization: Basic ");
-            sb.append(encoded);
-            sb.append("\r\n");
-        }
+		sb.append("\r\n");
 
-        if(pd.requestHeaderLines != null) {
-            for(int i = 0; i < pd.requestHeaderLines.length; i++) {
-                if(pd.requestHeaderLines[i] != null) {
-                    sb.append(pd.requestHeaderLines[i]);
-                    sb.append("\r\n");
-                }
-            }
-        }
+		OutputStream out = sock.getOutputStream();
 
-        sb.append("\r\n");
+		out.write(StringEncoder.GetBytes(sb.toString()));
+		out.flush();
 
-        OutputStream out = sock.getOutputStream();
+		// Parse the HTTP response
 
-        out.write(StringEncoder.GetBytes(sb.toString()));
-        out.flush();
+		byte[] buffer = new byte[1024];
+		InputStream in = sock.getInputStream();
 
-		/* Now parse the HTTP response */
+		int len = ClientServerHello.readLineRN(in, buffer);
 
-        byte[] buffer = new byte[1024];
-        InputStream in = sock.getInputStream();
+		String httpReponse = StringEncoder.GetString(buffer, 0, len);
 
-        int len = ClientServerHello.readLineRN(in, buffer);
+		if (httpReponse.startsWith("HTTP/") == false)
+		{
+			throw new IOException("The proxy did not send back a valid HTTP response.");
+		}
 
-        String httpReponse = StringEncoder.GetString(buffer, 0, len);
+		// "HTTP/1.X XYZ X" => 14 characters minimum
 
-        if(httpReponse.startsWith("HTTP/") == false) {
-            throw new IOException("The proxy did not send back a valid HTTP response.");
-        }
+		if ((httpReponse.length() < 14) || (httpReponse.charAt(8) != ' ') || (httpReponse.charAt(12) != ' '))
+		{
+			throw new IOException("The proxy did not send back a valid HTTP response.");
+		}
 
-		/* "HTTP/1.X XYZ X" => 14 characters minimum */
+		int errorCode;
 
-        if((httpReponse.length() < 14) || (httpReponse.charAt(8) != ' ') || (httpReponse.charAt(12) != ' ')) {
-            throw new IOException("The proxy did not send back a valid HTTP response.");
-        }
+		try
+		{
+			errorCode = Integer.parseInt(httpReponse.substring(9, 12));
+		}
+		catch (NumberFormatException ignore)
+		{
+			throw new IOException("The proxy did not send back a valid HTTP response.");
+		}
 
-        int errorCode;
+		if ((errorCode < 0) || (errorCode > 999))
+		{
+			throw new IOException("The proxy did not send back a valid HTTP response.");
+		}
 
-        try {
-            errorCode = Integer.parseInt(httpReponse.substring(9, 12));
-        }
-        catch(NumberFormatException ignore) {
-            throw new IOException("The proxy did not send back a valid HTTP response.");
-        }
+		if (errorCode != 200)
+		{
+			throw new HTTPProxyException(httpReponse.substring(13), errorCode);
+		}
 
-        if((errorCode < 0) || (errorCode > 999)) {
-            throw new IOException("The proxy did not send back a valid HTTP response.");
-        }
-
-        if(errorCode != 200) {
-            throw new HTTPProxyException(httpReponse.substring(13), errorCode);
-        }
-
-		/* OK, read until empty line */
-
-        while(true) {
-            len = ClientServerHello.readLineRN(in, buffer);
-            if(len == 0) {
-                break;
-            }
-        }
-    }
+		// Read until empty line
+		while (true)
+		{
+			len = ClientServerHello.readLineRN(in, buffer);
+			if (len == 0)
+			{
+				break;
+			}
+		}
+	}
 }
