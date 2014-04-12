@@ -70,15 +70,14 @@ public class AuthenticationManager implements MessageHandler
 	}
 
     byte[] deQueue() throws IOException
-   	{
+    {
         synchronized (packets)
         {
             while (packets.size() == 0)
             {
-                if (connectionClosed)
-                    throw new IOException("The connection is closed.", tm
-                            .getReasonClosedCause());
-
+                if (connectionClosed) {
+                    throw tm.getReasonClosedCause();
+                }
                 try
                 {
                     packets.wait();
@@ -458,25 +457,21 @@ public class AuthenticationManager implements MessageHandler
 		}
 	}
 
-	public void handleMessage(byte[] msg, int msglen) throws IOException
-	{
-		synchronized (packets)
-		{
-			if (msg == null)
-			{
-				connectionClosed = true;
-			}
-			else
-			{
-				byte[] tmp = new byte[msglen];
-				System.arraycopy(msg, 0, tmp, 0, msglen);
-				packets.add(tmp);
-			}
+    @Override
+    public void handleFailure(final IOException failure) {
+        connectionClosed = true;
+    }
 
-			packets.notifyAll();
-
-			if (packets.size() > 5)
-			{
+    public void handleMessage(byte[] msg, int msglen) throws IOException
+    {
+        synchronized (packets)
+        {
+            byte[] tmp = new byte[msglen];
+            System.arraycopy(msg, 0, tmp, 0, msglen);
+            packets.add(tmp);
+            packets.notifyAll();
+            if (packets.size() > 5)
+            {
 				connectionClosed = true;
 				throw new IOException("Error, peer is flooding us with authentication packets.");
 			}

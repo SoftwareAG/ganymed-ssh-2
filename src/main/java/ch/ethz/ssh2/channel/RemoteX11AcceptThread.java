@@ -228,7 +228,7 @@ public class RemoteX11AcceptThread extends Thread
 
 			try
 			{
-				c.cm.closeChannel(c, "IOException in X11 proxy code (" + e.getMessage() + ")", true);
+				c.cm.closeChannel(c, e, true);
 			}
 			catch (IOException ignored)
 			{

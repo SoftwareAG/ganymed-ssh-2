@@ -57,7 +57,12 @@ public class ServerAuthenticationManager implements MessageHandler
 		}
 	}
 
-	public void handleMessage(byte[] msg, int msglen) throws IOException
+    @Override
+    public void handleFailure(final IOException failure) {
+        //
+    }
+
+    public void handleMessage(byte[] msg, int msglen) throws IOException
 	{
 		synchronized (state)
 		{

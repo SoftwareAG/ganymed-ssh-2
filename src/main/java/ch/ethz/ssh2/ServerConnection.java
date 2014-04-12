@@ -342,11 +342,19 @@ public class ServerConnection
 	 */
 	public void close()
 	{
-		Throwable t = new Throwable("Closed due to user request.");
-		close(t, false);
+        synchronized (state)
+      		{
+      			if (state.cm != null)
+      				state.cm.closeAllChannels();
+
+      			if (state.tm != null)
+      			{
+      				state.tm.close();
+      			}
+      		}
 	}
 
-	public void close(Throwable t, boolean hard)
+	public void close(IOException t)
 	{
 		synchronized (state)
 		{
@@ -355,7 +363,7 @@ public class ServerConnection
 
 			if (state.tm != null)
 			{
-				state.tm.close(t, hard == false);
+				state.tm.close(t);
 			}
 		}
 	}

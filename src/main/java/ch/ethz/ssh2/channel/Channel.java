@@ -4,6 +4,8 @@
  */
 package ch.ethz.ssh2.channel;
 
+import java.io.IOException;
+
 /**
  * Channel.
  *
@@ -147,7 +149,7 @@ public class Channel
 	// We protect it with a private short term lock.
 
 	private final Object reasonClosedLock = new Object();
-	private String reasonClosed = null;
+	private IOException reasonClosed = null;
 
 	public Channel(ChannelManager cm)
 	{
@@ -194,7 +196,7 @@ public class Channel
 		}
 	}
 
-	public String getReasonClosed()
+	public IOException getReasonClosed()
 	{
 		synchronized (reasonClosedLock)
 		{
@@ -202,14 +204,11 @@ public class Channel
 		}
 	}
 
-	public void setReasonClosed(String reasonClosed)
+	public void setReasonClosed(IOException e)
 	{
 		synchronized (reasonClosedLock)
 		{
-			if (this.reasonClosed == null)
-			{
-				this.reasonClosed = reasonClosed;
-			}
+            this.reasonClosed = e;
 		}
 	}
 

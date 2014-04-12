@@ -22,206 +22,190 @@ import ch.ethz.ssh2.signature.DSASignature;
 import ch.ethz.ssh2.signature.RSASHA1Verify;
 import ch.ethz.ssh2.signature.RSASignature;
 
-public class ServerKexManager extends KexManager
-{
-	private final ServerConnectionState state;
-	private boolean authenticationStarted = false;
+public class ServerKexManager extends KexManager {
+    private final ServerConnectionState state;
+    private boolean authenticationStarted = false;
 
-	public ServerKexManager(ServerConnectionState state)
-	{
-		super(state.tm, state.csh, state.next_cryptoWishList, state.generator);
-		this.state = state;
-	}
+    public ServerKexManager(ServerConnectionState state) {
+        super(state.tm, state.csh, state.next_cryptoWishList, state.generator);
+        this.state = state;
+    }
 
-	public void handleMessage(byte[] msg, int msglen) throws IOException
-	{
-		PacketKexInit kip;
+    @Override
+    public void handleFailure(final IOException failure) {
+        synchronized(accessLock) {
+            connectionClosed = true;
+            accessLock.notifyAll();
+        }
+    }
 
-		if (msg == null)
-		{
-			synchronized (accessLock)
-			{
-				connectionClosed = true;
-				accessLock.notifyAll();
-				return;
-			}
-		}
+    public void handleMessage(byte[] msg, int msglen) throws IOException {
+        PacketKexInit kip;
 
-		if ((kxs == null) && (msg[0] != Packets.SSH_MSG_KEXINIT))
-			throw new IOException("Unexpected KEX message (type " + msg[0] + ")");
+        if((kxs == null) && (msg[0] != Packets.SSH_MSG_KEXINIT)) {
+            throw new IOException("Unexpected KEX message (type " + msg[0] + ")");
+        }
 
-		if (ignore_next_kex_packet)
-		{
-			ignore_next_kex_packet = false;
-			return;
-		}
+        if(ignore_next_kex_packet) {
+            ignore_next_kex_packet = false;
+            return;
+        }
 
-		if (msg[0] == Packets.SSH_MSG_KEXINIT)
-		{
-			if ((kxs != null) && (kxs.state != 0))
-				throw new IOException("Unexpected SSH_MSG_KEXINIT message during on-going kex exchange!");
-			
-			if (kxs == null)
-			{
-				/*
+        if(msg[0] == Packets.SSH_MSG_KEXINIT) {
+            if((kxs != null) && (kxs.state != 0)) {
+                throw new IOException("Unexpected SSH_MSG_KEXINIT message during on-going kex exchange!");
+            }
+
+            if(kxs == null) {
+                /*
 				 * Ah, OK, peer wants to do KEX. Let's be nice and play
 				 * together.
 				 */
-				kxs = new KexState();
-				kxs.local_dsa_key = nextKEXdsakey;
-				kxs.local_rsa_key = nextKEXrsakey;
-				kxs.dhgexParameters = nextKEXdhgexParameters;
-				kip = new PacketKexInit(nextKEXcryptoWishList, rnd);
-				kxs.localKEX = kip;
-				tm.sendKexMessage(kip.getPayload());
-			}
+                kxs = new KexState();
+                kxs.local_dsa_key = nextKEXdsakey;
+                kxs.local_rsa_key = nextKEXrsakey;
+                kxs.dhgexParameters = nextKEXdhgexParameters;
+                kip = new PacketKexInit(nextKEXcryptoWishList, rnd);
+                kxs.localKEX = kip;
+                tm.sendKexMessage(kip.getPayload());
+            }
 
-			kip = new PacketKexInit(msg, 0, msglen);
-			kxs.remoteKEX = kip;
+            kip = new PacketKexInit(msg, 0, msglen);
+            kxs.remoteKEX = kip;
 
-			kxs.np = mergeKexParameters(kxs.remoteKEX.getKexParameters(), kxs.localKEX.getKexParameters());
+            kxs.np = mergeKexParameters(kxs.remoteKEX.getKexParameters(), kxs.localKEX.getKexParameters());
 
-			if (kxs.np == null)
-				throw new IOException("Cannot negotiate, proposals do not match.");
+            if(kxs.np == null) {
+                throw new IOException("Cannot negotiate, proposals do not match.");
+            }
 
-			if (kxs.remoteKEX.isFirst_kex_packet_follows() && (kxs.np.guessOK == false))
-			{
+            if(kxs.remoteKEX.isFirst_kex_packet_follows() && (kxs.np.guessOK == false)) {
 				/*
 				 * Guess was wrong, we need to ignore the next kex packet.
 				 */
 
-				ignore_next_kex_packet = true;
-			}
+                ignore_next_kex_packet = true;
+            }
 
-			if (kxs.np.kex_algo.equals("diffie-hellman-group1-sha1")
-					|| kxs.np.kex_algo.equals("diffie-hellman-group14-sha1"))
-			{
-				kxs.dhx = new DhExchange();
+            if(kxs.np.kex_algo.equals("diffie-hellman-group1-sha1")
+                    || kxs.np.kex_algo.equals("diffie-hellman-group14-sha1")) {
+                kxs.dhx = new DhExchange();
 
-				if (kxs.np.kex_algo.equals("diffie-hellman-group1-sha1"))
-					kxs.dhx.serverInit(1, rnd);
-				else
-					kxs.dhx.serverInit(14, rnd);
+                if(kxs.np.kex_algo.equals("diffie-hellman-group1-sha1")) {
+                    kxs.dhx.serverInit(1, rnd);
+                }
+                else {
+                    kxs.dhx.serverInit(14, rnd);
+                }
 
-				kxs.state = 1;
-				return;
-			}
+                kxs.state = 1;
+                return;
+            }
 
-			throw new IllegalStateException("Unkown KEX method!");
-		}
+            throw new IllegalStateException("Unkown KEX method!");
+        }
 
-		if (msg[0] == Packets.SSH_MSG_NEWKEYS)
-		{
-			if (km == null)
-				throw new IOException("Peer sent SSH_MSG_NEWKEYS, but I have no key material ready!");
+        if(msg[0] == Packets.SSH_MSG_NEWKEYS) {
+            if(km == null) {
+                throw new IOException("Peer sent SSH_MSG_NEWKEYS, but I have no key material ready!");
+            }
 
-			BlockCipher cbc;
-			MAC mac;
+            BlockCipher cbc;
+            MAC mac;
 
-			try
-			{
-				cbc = BlockCipherFactory.createCipher(kxs.np.enc_algo_client_to_server, false,
-						km.enc_key_client_to_server, km.initial_iv_client_to_server);
+            try {
+                cbc = BlockCipherFactory.createCipher(kxs.np.enc_algo_client_to_server, false,
+                        km.enc_key_client_to_server, km.initial_iv_client_to_server);
 
-				mac = new MAC(kxs.np.mac_algo_client_to_server, km.integrity_key_client_to_server);
+                mac = new MAC(kxs.np.mac_algo_client_to_server, km.integrity_key_client_to_server);
 
-			}
-			catch (IllegalArgumentException e1)
-			{
-				throw new IOException("Fatal error during MAC startup!");
-			}
+            }
+            catch(IllegalArgumentException e1) {
+                throw new IOException("Fatal error during MAC startup!");
+            }
 
-			tm.changeRecvCipher(cbc, mac);
+            tm.changeRecvCipher(cbc, mac);
 
-			ConnectionInfo sci = new ConnectionInfo();
+            ConnectionInfo sci = new ConnectionInfo();
 
-			kexCount++;
+            kexCount++;
 
-			sci.keyExchangeAlgorithm = kxs.np.kex_algo;
-			sci.keyExchangeCounter = kexCount;
-			sci.clientToServerCryptoAlgorithm = kxs.np.enc_algo_client_to_server;
-			sci.serverToClientCryptoAlgorithm = kxs.np.enc_algo_server_to_client;
-			sci.clientToServerMACAlgorithm = kxs.np.mac_algo_client_to_server;
-			sci.serverToClientMACAlgorithm = kxs.np.mac_algo_server_to_client;
-			sci.serverHostKeyAlgorithm = kxs.np.server_host_key_algo;
-			sci.serverHostKey = kxs.remote_hostkey;
+            sci.keyExchangeAlgorithm = kxs.np.kex_algo;
+            sci.keyExchangeCounter = kexCount;
+            sci.clientToServerCryptoAlgorithm = kxs.np.enc_algo_client_to_server;
+            sci.serverToClientCryptoAlgorithm = kxs.np.enc_algo_server_to_client;
+            sci.clientToServerMACAlgorithm = kxs.np.mac_algo_client_to_server;
+            sci.serverToClientMACAlgorithm = kxs.np.mac_algo_server_to_client;
+            sci.serverHostKeyAlgorithm = kxs.np.server_host_key_algo;
+            sci.serverHostKey = kxs.remote_hostkey;
 
-			synchronized (accessLock)
-			{
-				lastConnInfo = sci;
-				accessLock.notifyAll();
-			}
+            synchronized(accessLock) {
+                lastConnInfo = sci;
+                accessLock.notifyAll();
+            }
 
-			kxs = null;
-			return;
-		}
+            kxs = null;
+            return;
+        }
 
-		if ((kxs == null) || (kxs.state == 0))
-			throw new IOException("Unexpected Kex submessage!");
+        if((kxs == null) || (kxs.state == 0)) {
+            throw new IOException("Unexpected Kex submessage!");
+        }
 
-		if (kxs.np.kex_algo.equals("diffie-hellman-group1-sha1")
-				|| kxs.np.kex_algo.equals("diffie-hellman-group14-sha1"))
-		{
-			if (kxs.state == 1)
-			{
-				PacketKexDHInit dhi = new PacketKexDHInit(msg, 0, msglen);
+        if(kxs.np.kex_algo.equals("diffie-hellman-group1-sha1")
+                || kxs.np.kex_algo.equals("diffie-hellman-group14-sha1")) {
+            if(kxs.state == 1) {
+                PacketKexDHInit dhi = new PacketKexDHInit(msg, 0, msglen);
 
-				kxs.dhx.setE(dhi.getE());
+                kxs.dhx.setE(dhi.getE());
 
-				byte[] hostKey = null;
+                byte[] hostKey = null;
 
-				if (kxs.np.server_host_key_algo.equals("ssh-rsa"))
-				{
-					hostKey = RSASHA1Verify.encodeSSHRSAPublicKey(kxs.local_rsa_key.getPublicKey());
-				}
+                if(kxs.np.server_host_key_algo.equals("ssh-rsa")) {
+                    hostKey = RSASHA1Verify.encodeSSHRSAPublicKey(kxs.local_rsa_key.getPublicKey());
+                }
 
-				if (kxs.np.server_host_key_algo.equals("ssh-dss"))
-				{
-					hostKey = DSASHA1Verify.encodeSSHDSAPublicKey(kxs.local_dsa_key.getPublicKey());
-				}
+                if(kxs.np.server_host_key_algo.equals("ssh-dss")) {
+                    hostKey = DSASHA1Verify.encodeSSHDSAPublicKey(kxs.local_dsa_key.getPublicKey());
+                }
 
-				try
-				{
-					kxs.H = kxs.dhx.calculateH(csh.getClientString(), csh.getServerString(),
-							kxs.remoteKEX.getPayload(), kxs.localKEX.getPayload(), hostKey);
-				}
-				catch (IllegalArgumentException e)
-				{
-					throw new IOException("KEX error.", e);
-				}
+                try {
+                    kxs.H = kxs.dhx.calculateH(csh.getClientString(), csh.getServerString(),
+                            kxs.remoteKEX.getPayload(), kxs.localKEX.getPayload(), hostKey);
+                }
+                catch(IllegalArgumentException e) {
+                    throw new IOException("KEX error.", e);
+                }
 
-				kxs.K = kxs.dhx.getK();
+                kxs.K = kxs.dhx.getK();
 
-				byte[] signature = null;
+                byte[] signature = null;
 
-				if (kxs.np.server_host_key_algo.equals("ssh-rsa"))
-				{
-					RSASignature rs = RSASHA1Verify.generateSignature(kxs.H, kxs.local_rsa_key);
-					signature = RSASHA1Verify.encodeSSHRSASignature(rs);
-				}
+                if(kxs.np.server_host_key_algo.equals("ssh-rsa")) {
+                    RSASignature rs = RSASHA1Verify.generateSignature(kxs.H, kxs.local_rsa_key);
+                    signature = RSASHA1Verify.encodeSSHRSASignature(rs);
+                }
 
-				if (kxs.np.server_host_key_algo.equals("ssh-dss"))
-				{
-					DSASignature ds = DSASHA1Verify.generateSignature(kxs.H, kxs.local_dsa_key, rnd);
-					signature = DSASHA1Verify.encodeSSHDSASignature(ds);
-				}
+                if(kxs.np.server_host_key_algo.equals("ssh-dss")) {
+                    DSASignature ds = DSASHA1Verify.generateSignature(kxs.H, kxs.local_dsa_key, rnd);
+                    signature = DSASHA1Verify.encodeSSHDSASignature(ds);
+                }
 
-				PacketKexDHReply dhr = new PacketKexDHReply(hostKey, kxs.dhx.getF(), signature);
-				tm.sendKexMessage(dhr.getPayload());
+                PacketKexDHReply dhr = new PacketKexDHReply(hostKey, kxs.dhx.getF(), signature);
+                tm.sendKexMessage(dhr.getPayload());
 
-				finishKex(false);
-				kxs.state = -1;
+                finishKex(false);
+                kxs.state = -1;
 
-				if (authenticationStarted == false)
-				{
-					authenticationStarted = true;
-					state.am = new ServerAuthenticationManager(state);
-				}
+                if(authenticationStarted == false) {
+                    authenticationStarted = true;
+                    state.am = new ServerAuthenticationManager(state);
+                }
 
-				return;
-			}
-		}
+                return;
+            }
+        }
 
-		throw new IllegalStateException("Unkown KEX method! (" + kxs.np.kex_algo + ")");
-	}
+        throw new IllegalStateException("Unkown KEX method! (" + kxs.np.kex_algo + ")");
+    }
 }

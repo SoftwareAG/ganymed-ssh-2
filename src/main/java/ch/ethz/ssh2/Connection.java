@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -590,17 +591,24 @@ public class Connection {
      * run forever.
      */
     public synchronized void close() {
-        Throwable t = new Throwable("Closed due to user request.");
-        close(t, false);
-    }
-
-    public synchronized void close(Throwable t, boolean hard) {
         if(cm != null) {
             cm.closeAllChannels();
         }
-
         if(tm != null) {
-            tm.close(t, hard == false);
+            tm.close();
+            tm = null;
+        }
+        am = null;
+        cm = null;
+        authenticated = false;
+    }
+
+    public synchronized void close(IOException t) {
+        if(cm != null) {
+            cm.closeAllChannels();
+        }
+        if(tm != null) {
+            tm.close(t);
             tm = null;
         }
         am = null;
@@ -711,10 +719,10 @@ public class Connection {
         final TimeoutState state = new TimeoutState();
 
         if(null == proxy) {
-            tm = new ClientTransportManager();
+            tm = new ClientTransportManager(new Socket());
         }
         else {
-            tm = new HTTPProxyClientTransportManager(proxy);
+            tm = new HTTPProxyClientTransportManager(new Socket(), proxy);
         }
         tm.setSoTimeout(connectTimeout);
         tm.setTcpNoDelay(tcpNoDelay);
@@ -776,11 +784,11 @@ public class Connection {
             throw e;
         }
         catch(IOException e) {
-            /* This will also invoke any registered connection monitors */
-            close(e, false);
+            // This will also invoke any registered connection monitors
+            close(e);
 
             synchronized(state) {
-				/* Show a clean exception, not something like "the socket is closed!?!" */
+                /* Show a clean exception, not something like "the socket is closed!?!" */
                 if(state.timeoutSocketClosed) {
                     throw new SocketTimeoutException(String.format("The kexTimeout (%d ms) expired.", kexTimeout));
                 }
@@ -1317,7 +1325,6 @@ public class Connection {
         if(rnd == null) {
             throw new IllegalArgumentException();
         }
-
         this.generator = rnd;
     }
 

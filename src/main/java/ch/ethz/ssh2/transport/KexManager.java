@@ -68,11 +68,9 @@ public abstract class KexManager implements MessageHandler {
                 if((lastConnInfo != null) && (lastConnInfo.keyExchangeCounter >= minKexCount)) {
                     return lastConnInfo;
                 }
-
                 if(connectionClosed) {
-                    throw new IOException("Key exchange was not finished, connection is closed.", tm.getReasonClosedCause());
+                    throw tm.getReasonClosedCause();
                 }
-
                 try {
                     accessLock.wait();
                 }
@@ -91,11 +89,10 @@ public abstract class KexManager implements MessageHandler {
         if(client.length == 0) {
             return null;
         }
-
-        for(int i = 0; i < client.length; i++) {
-            for(int j = 0; j < server.length; j++) {
-                if(client[i].equals(server[j])) {
-                    return client[i];
+        for(String c : client) {
+            for(String s : server) {
+                if(c.equals(s)) {
+                    return c;
                 }
             }
         }
@@ -255,7 +252,7 @@ public abstract class KexManager implements MessageHandler {
 
         BlockCipher cbc;
         MAC mac;
-		Compressor comp;
+        Compressor comp;
 
         try {
             cbc = BlockCipherFactory.createCipher(clientMode ? kxs.np.enc_algo_client_to_server
@@ -266,14 +263,14 @@ public abstract class KexManager implements MessageHandler {
             mac = new MAC(clientMode ? kxs.np.mac_algo_client_to_server : kxs.np.mac_algo_server_to_client, clientMode
                     ? km.integrity_key_client_to_server : km.integrity_key_server_to_client);
 
-			comp = CompressionFactory.createCompressor(kxs.np.comp_algo_client_to_server);
+            comp = CompressionFactory.createCompressor(kxs.np.comp_algo_client_to_server);
         }
         catch(IllegalArgumentException f) {
             throw new IOException(String.format("Fatal error initializing ciphers. %s", f.getMessage()));
         }
 
         tm.changeSendCipher(cbc, mac);
-		tm.changeSendCompression(comp);
+        tm.changeSendCompression(comp);
         tm.kexFinished();
     }
 

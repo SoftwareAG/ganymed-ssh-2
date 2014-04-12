@@ -61,6 +61,12 @@ public abstract class TransportManager {
     private Thread asynchronousThread = null;
     private boolean asynchronousPending = false;
 
+    private Socket sock;
+
+    protected TransportManager(final Socket sock) {
+        this.sock = sock;
+    }
+
     private static final class AsynchronousEntry {
         public byte[] msg;
         public Runnable run;
@@ -142,10 +148,10 @@ public abstract class TransportManager {
 
     private final Object connectionSemaphore = new Object();
 
-    private boolean flagKexOngoing = false;
-    private boolean connectionClosed = false;
+    private boolean flagKexOngoing;
 
-    private Throwable reasonClosedCause = null;
+    private boolean connectionClosed;
+    private IOException reasonClosedCause;
 
     private TransportConnection tc;
     private KexManager km;
@@ -155,7 +161,6 @@ public abstract class TransportManager {
     private Thread receiveThread;
 
     private List<ConnectionMonitor> connectionMonitors = new ArrayList<ConnectionMonitor>();
-    private boolean monitorsWereInformed = false;
 
     protected void init(TransportConnection tc, KexManager km) {
         this.tc = tc;
@@ -170,7 +175,7 @@ public abstract class TransportManager {
         return km.getOrWaitForConnectionInfo(kexNumber);
     }
 
-    public Throwable getReasonClosedCause() {
+    public IOException getReasonClosedCause() {
         synchronized(connectionSemaphore) {
             return reasonClosedCause;
         }
@@ -180,77 +185,53 @@ public abstract class TransportManager {
         return km.sessionId;
     }
 
-    public void close(Throwable cause) {
-        this.close(cause, false);
-    }
-
-    public abstract void close(Throwable cause, boolean useDisconnectPacket);
-
-    public void close(Socket sock, Throwable cause, boolean useDisconnectPacket) {
-        if(useDisconnectPacket == false) {
-            /* OK, hard shutdown - do not aquire the semaphore,
-			 * perhaps somebody is inside (and waits until the remote
-			 * side is ready to accept new data). */
-
-            try {
-                sock.close();
-            }
-            catch(IOException ignore) {
-            }
-
-			/* OK, whoever tried to send data, should now agree that
-			 * there is no point in further waiting =)
-			 * It is safe now to aquire the semaphore.
-			 */
-        }
-
+    public void close() {
+        // It is safe now to acquire the semaphore.
         synchronized(connectionSemaphore) {
-            if(connectionClosed == false) {
-                if(useDisconnectPacket == true) {
-                    try {
-                        byte[] msg = new PacketDisconnect(Packets.SSH_DISCONNECT_BY_APPLICATION, cause.getMessage(), "")
-                                .getPayload();
-                        if(tc != null) {
-                            tc.sendMessage(msg);
-                        }
-                    }
-                    catch(IOException ignore) {
-                    }
-
-                    try {
-                        sock.close();
-                    }
-                    catch(IOException ignore) {
+            if(!connectionClosed) {
+                try {
+                    byte[] msg = new PacketDisconnect(Packets.SSH_DISCONNECT_BY_APPLICATION, "", "").getPayload();
+                    if(tc != null) {
+                        tc.sendMessage(msg);
                     }
                 }
-
+                catch(IOException ignore) {
+                    //
+                }
+                try {
+                    sock.close();
+                }
+                catch(IOException ignore) {
+                    //
+                }
                 connectionClosed = true;
-                reasonClosedCause = cause; /* may be null */
             }
             connectionSemaphore.notifyAll();
         }
-
-		/* No check if we need to inform the monitors */
-
-        List<ConnectionMonitor> monitors = new ArrayList<ConnectionMonitor>();
-
         synchronized(this) {
-			/* Short term lock to protect "connectionMonitors"
-			 * and "monitorsWereInformed"
-			 * (they may be modified concurrently)
-			 */
-
-            if(monitorsWereInformed == false) {
-                monitorsWereInformed = true;
-                monitors.addAll(connectionMonitors);
-            }
-        }
-
-        for(ConnectionMonitor cmon : monitors) {
-            try {
+            for(ConnectionMonitor cmon : connectionMonitors) {
                 cmon.connectionLost(reasonClosedCause);
             }
-            catch(Exception ignore) {
+        }
+    }
+
+    public void close(IOException cause) {
+        // Do not acquire the semaphore, perhaps somebody is inside (and waits until
+        // the remote side is ready to accept new data
+        try {
+            sock.close();
+        }
+        catch(IOException ignore) {
+        }
+        // It is safe now to acquire the semaphore.
+        synchronized(connectionSemaphore) {
+            connectionClosed = true;
+            reasonClosedCause = cause;
+            connectionSemaphore.notifyAll();
+        }
+        synchronized(this) {
+            for(ConnectionMonitor cmon : connectionMonitors) {
+                cmon.connectionLost(reasonClosedCause);
             }
         }
     }
@@ -260,32 +241,21 @@ public abstract class TransportManager {
             public void run() {
                 try {
                     receiveLoop();
+                    // Can only exit with exception
                 }
                 catch(IOException e) {
                     close(e);
                     log.warning("Receive thread: error in receiveLoop: " + e.getMessage());
+                    // Tell all handlers that it is time to say goodbye
+                    if(km != null) {
+                        km.handleFailure(e);
+                    }
+                    for(HandlerEntry he : messageHandlers) {
+                        he.mh.handleFailure(e);
+                    }
                 }
-
                 if(log.isDebugEnabled()) {
                     log.debug("Receive thread: back from receiveLoop");
-                }
-
-				/* Tell all handlers that it is time to say goodbye */
-
-                if(km != null) {
-                    try {
-                        km.handleMessage(null, 0);
-                    }
-                    catch(IOException ignored) {
-                    }
-                }
-
-                for(HandlerEntry he : messageHandlers) {
-                    try {
-                        he.mh.handleMessage(null, 0);
-                    }
-                    catch(IOException ignored) {
-                    }
                 }
             }
         });
@@ -320,7 +290,7 @@ public abstract class TransportManager {
     public void sendKexMessage(byte[] msg) throws IOException {
         synchronized(connectionSemaphore) {
             if(connectionClosed) {
-                throw new IOException("Sorry, this connection is closed.", reasonClosedCause);
+                throw reasonClosedCause;
             }
 
             flagKexOngoing = true;
@@ -352,12 +322,11 @@ public abstract class TransportManager {
     public void forceKeyExchange(CryptoWishList cwl, DHGexParameters dhgex, DSAPrivateKey dsa, RSAPrivateKey rsa)
             throws IOException {
         synchronized(connectionSemaphore) {
-            if(connectionClosed)
-				/* Inform the caller that there is no point in triggering a new kex */ {
-                throw new IOException("Sorry, this connection is closed.", reasonClosedCause);
+            if(connectionClosed) {
+                // Inform the caller that there is no point in triggering a new kex
+                throw reasonClosedCause;
             }
         }
-
         km.initiateKEX(cwl, dhgex, dsa, rsa);
     }
 
@@ -391,7 +360,7 @@ public abstract class TransportManager {
             asynchronousPending = true;
 
 			/* This limit should be flexible enough. We need this, otherwise the peer
-			 * can flood us with global requests (and other stuff where we have to reply
+             * can flood us with global requests (and other stuff where we have to reply
 			 * with an asynchronous message) and (if the server just sends data and does not
 			 * read what we send) this will probably put us in a low memory situation
 			 * (our send queue would grow and grow and...) */
@@ -461,7 +430,7 @@ public abstract class TransportManager {
         synchronized(connectionSemaphore) {
             while(true) {
                 if(connectionClosed) {
-                    throw new IOException("Sorry, this connection is closed.", reasonClosedCause);
+                    throw reasonClosedCause;
                 }
 
                 if(flagKexOngoing == false) {
@@ -487,7 +456,7 @@ public abstract class TransportManager {
         }
     }
 
-    public void receiveLoop() throws IOException {
+    private void receiveLoop() throws IOException {
         byte[] msg = new byte[35000];
 
         while(true) {
@@ -545,7 +514,7 @@ public abstract class TransportManager {
                 reasonBuffer.append(tr.readString("UTF-8"));
 
 				/*
-				 * Do not get fooled by servers that send abnormal long error
+                 * Do not get fooled by servers that send abnormal long error
 				 * messages
 				 */
 
@@ -557,7 +526,7 @@ public abstract class TransportManager {
                 }
 
 				/*
-				 * Also, check that the server did not send characters that may
+                 * Also, check that the server did not send characters that may
 				 * screw up the receiver -> restrict to reasonable US-ASCII
 				 * subset -> "printable characters" (ASCII 32 - 126). Replace
 				 * all others with 0xFFFD (UNICODE replacement character).

@@ -113,8 +113,7 @@ public class LocalAcceptThread extends Thread implements IChannelWorkerThread
 				try
 				{
 					/* This message is only visible during debugging, since we discard the channel immediatelly */
-					cn.cm.closeChannel(cn, "Weird error during creation of StreamForwarder (" + e.getMessage() + ")",
-							true);
+					cn.cm.closeChannel(cn, e, true);
 				}
 				catch (IOException ignore)
 				{

@@ -69,16 +69,16 @@ public class ClientKexManager extends KexManager {
         throw new IOException("Unknown server host key algorithm '" + kxs.np.server_host_key_algo + "'");
     }
 
+    @Override
+    public void handleFailure(final IOException failure) {
+        synchronized(accessLock) {
+            connectionClosed = true;
+            accessLock.notifyAll();
+        }
+    }
+
     public synchronized void handleMessage(byte[] msg, int msglen) throws IOException {
         PacketKexInit kip;
-
-        if(msg == null) {
-            synchronized(accessLock) {
-                connectionClosed = true;
-                accessLock.notifyAll();
-                return;
-            }
-        }
 
         if((kxs == null) && (msg[0] != Packets.SSH_MSG_KEXINIT)) {
             throw new IOException("Unexpected KEX message (type " + msg[0] + ")");
@@ -96,7 +96,7 @@ public class ClientKexManager extends KexManager {
 
             if(kxs == null) {
                 /*
-				 * Ah, OK, peer wants to do KEX. Let's be nice and play
+                 * Ah, OK, peer wants to do KEX. Let's be nice and play
 				 * together.
 				 */
                 kxs = new KexState();

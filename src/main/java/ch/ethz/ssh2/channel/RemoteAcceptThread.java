@@ -87,7 +87,7 @@ public class RemoteAcceptThread extends Thread
 
 			try
 			{
-				c.cm.closeChannel(c, "IOException in proxy code (" + e.getMessage() + ")", true);
+				c.cm.closeChannel(c, e, true);
 			}
 			catch (IOException ignored)
 			{
