@@ -6,6 +6,8 @@ package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
 
+import ch.ethz.ssh2.PacketFormatException;
+
 /**
  * PacketChannelWindowAdjust.
  * 
@@ -43,7 +45,7 @@ public class PacketChannelWindowAdjust
 		windowChange = tr.readUINT32();
 		
 		if (tr.remain() != 0)
-			throw new IOException("Padding in SSH_MSG_CHANNEL_WINDOW_ADJUST packet!");
+			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
 	}
 
 	public byte[] getPayload()

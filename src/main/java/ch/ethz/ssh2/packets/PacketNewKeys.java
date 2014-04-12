@@ -6,6 +6,9 @@ package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
 
+import ch.ethz.ssh2.PacketFormatException;
+import ch.ethz.ssh2.PacketTypeException;
+
 /**
  * PacketNewKeys.
  * 
@@ -30,11 +33,13 @@ public class PacketNewKeys
 		int packet_type = tr.readByte();
 
 		if (packet_type != Packets.SSH_MSG_NEWKEYS)
-			throw new IOException("This is not a SSH_MSG_NEWKEYS! ("
-					+ packet_type + ")");
-
+		{
+			throw new PacketTypeException(packet_type);
+		}
 		if (tr.remain() != 0)
-			throw new IOException("Padding in SSH_MSG_NEWKEYS packet!");
+		{
+			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+		}
 	}
 
 	public byte[] getPayload()

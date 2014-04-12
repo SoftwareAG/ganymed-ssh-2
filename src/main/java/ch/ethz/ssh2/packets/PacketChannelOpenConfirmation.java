@@ -6,6 +6,9 @@ package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
 
+import ch.ethz.ssh2.PacketFormatException;
+import ch.ethz.ssh2.PacketTypeException;
+
 /**
  * PacketChannelOpenConfirmation.
  * 
@@ -40,17 +43,18 @@ public class PacketChannelOpenConfirmation
 		int packet_type = tr.readByte();
 
 		if (packet_type != Packets.SSH_MSG_CHANNEL_OPEN_CONFIRMATION)
-			throw new IOException(
-					"This is not a SSH_MSG_CHANNEL_OPEN_CONFIRMATION! ("
-							+ packet_type + ")");
+		{
+			throw new PacketTypeException(packet_type);
+		}
 
 		recipientChannelID = tr.readUINT32();
 		senderChannelID = tr.readUINT32();
 		initialWindowSize = tr.readUINT32();
 		maxPacketSize = tr.readUINT32();
 		
-		if (tr.remain() != 0)
-			throw new IOException("Padding in SSH_MSG_CHANNEL_OPEN_CONFIRMATION packet!");
+		if (tr.remain() != 0) {
+			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+		}
 	}
 
 	public byte[] getPayload()

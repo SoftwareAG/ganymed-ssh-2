@@ -7,6 +7,7 @@ package ch.ethz.ssh2.packets;
 import java.io.IOException;
 import java.math.BigInteger;
 
+import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.util.StringEncoder;
 
 /**
@@ -54,7 +55,7 @@ public class TypesReader
 	public int readByte() throws IOException
 	{
 		if (pos >= max)
-			throw new IOException("Packet too short.");
+			throw new PacketFormatException("Packet too short.");
 
 		return (arr[pos++] & 0xff);
 	}
@@ -62,7 +63,7 @@ public class TypesReader
 	public byte[] readBytes(int len) throws IOException
 	{
 		if ((pos + len) > max)
-			throw new IOException("Packet too short.");
+			throw new PacketFormatException("Packet too short.");
 
 		byte[] res = new byte[len];
 
@@ -75,7 +76,7 @@ public class TypesReader
 	public void readBytes(byte[] dst, int off, int len) throws IOException
 	{
 		if ((pos + len) > max)
-			throw new IOException("Packet too short.");
+			throw new PacketFormatException("Packet too short.");
 
 		System.arraycopy(arr, pos, dst, off, len);
 		pos += len;
@@ -84,7 +85,7 @@ public class TypesReader
 	public boolean readBoolean() throws IOException
 	{
 		if (pos >= max)
-			throw new IOException("Packet too short.");
+			throw new PacketFormatException("Packet too short.");
 
 		return (arr[pos++] != 0);
 	}
@@ -92,7 +93,7 @@ public class TypesReader
 	public int readUINT32() throws IOException
 	{
 		if ((pos + 4) > max)
-			throw new IOException("Packet too short.");
+			throw new PacketFormatException("Packet too short.");
 
 		return ((arr[pos++] & 0xff) << 24) | ((arr[pos++] & 0xff) << 16) | ((arr[pos++] & 0xff) << 8)
 				| (arr[pos++] & 0xff);
@@ -101,7 +102,7 @@ public class TypesReader
 	public long readUINT64() throws IOException
 	{
 		if ((pos + 8) > max)
-			throw new IOException("Packet too short.");
+			throw new PacketFormatException("Packet too short.");
 
 		long high = ((arr[pos++] & 0xff) << 24) | ((arr[pos++] & 0xff) << 16) | ((arr[pos++] & 0xff) << 8)
 				| (arr[pos++] & 0xff); /* sign extension may take place - will be shifted away =) */
@@ -131,7 +132,7 @@ public class TypesReader
 		int len = readUINT32();
 
 		if ((len + pos) > max)
-			throw new IOException("Malformed SSH byte string.");
+			throw new PacketFormatException("Malformed SSH byte string.");
 
 		byte[] res = new byte[len];
 		System.arraycopy(arr, pos, res, 0, len);
@@ -144,7 +145,7 @@ public class TypesReader
 		int len = readUINT32();
 
 		if ((len + pos) > max)
-			throw new IOException("Malformed SSH string.");
+			throw new PacketFormatException("Malformed SSH string.");
 
 		String res = (charsetName == null) ? new String(arr, pos, len) : new String(arr, pos, len, charsetName);
 		pos += len;
@@ -157,7 +158,7 @@ public class TypesReader
 		int len = readUINT32();
 
 		if ((len + pos) > max)
-			throw new IOException("Malformed SSH string.");
+			throw new PacketFormatException("Malformed SSH string.");
 
 		String res = StringEncoder.GetString(arr, pos, len);
 		pos += len;

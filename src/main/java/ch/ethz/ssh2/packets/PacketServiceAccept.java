@@ -6,6 +6,8 @@ package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
 
+import ch.ethz.ssh2.PacketTypeException;
+
 /**
  * PacketServiceAccept.
  * 
@@ -33,9 +35,9 @@ public class PacketServiceAccept
 		int packet_type = tr.readByte();
 
 		if (packet_type != Packets.SSH_MSG_SERVICE_ACCEPT)
-			throw new IOException("This is not a SSH_MSG_SERVICE_ACCEPT! ("
-					+ packet_type + ")");
-
+		{
+			throw new PacketTypeException(packet_type);
+		}
 		serviceName = "";
 		
 		if (tr.remain() != 0)

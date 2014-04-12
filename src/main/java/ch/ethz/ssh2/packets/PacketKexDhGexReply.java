@@ -8,6 +8,9 @@ import java.io.IOException;
 
 import java.math.BigInteger;
 
+import ch.ethz.ssh2.PacketFormatException;
+import ch.ethz.ssh2.PacketTypeException;
+
 /**
  * PacketKexDhGexReply.
  * 
@@ -32,14 +35,18 @@ public class PacketKexDhGexReply
 		int packet_type = tr.readByte();
 
 		if (packet_type != Packets.SSH_MSG_KEX_DH_GEX_REPLY)
-			throw new IOException("This is not a SSH_MSG_KEX_DH_GEX_REPLY! (" + packet_type + ")");
+		{
+			throw new PacketTypeException(packet_type);
+		}
 
 		hostKey = tr.readByteString();
 		f = tr.readMPINT();
 		signature = tr.readByteString();
 
 		if (tr.remain() != 0)
-			throw new IOException("PADDING IN SSH_MSG_KEX_DH_GEX_REPLY!");
+		{
+			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+		}
 	}
 
 	public BigInteger getF()

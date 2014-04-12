@@ -7,6 +7,8 @@ package ch.ethz.ssh2.packets;
 import java.io.IOException;
 import java.security.SecureRandom;
 
+import ch.ethz.ssh2.PacketFormatException;
+import ch.ethz.ssh2.PacketTypeException;
 import ch.ethz.ssh2.crypto.CryptoWishList;
 import ch.ethz.ssh2.transport.KexParameters;
 
@@ -51,8 +53,9 @@ public class PacketKexInit
 		int packet_type = tr.readByte();
 
 		if (packet_type != Packets.SSH_MSG_KEXINIT)
-			throw new IOException("This is not a KexInitPacket! (" + packet_type + ")");
-
+		{
+			throw new PacketTypeException(packet_type);
+		}
 		kp.cookie = tr.readBytes(16);
 		kp.kex_algorithms = tr.readNameList();
 		kp.server_host_key_algorithms = tr.readNameList();
@@ -67,8 +70,9 @@ public class PacketKexInit
 		kp.first_kex_packet_follows = tr.readBoolean();
 		kp.reserved_field1 = tr.readUINT32();
 
-		if (tr.remain() != 0)
-			throw new IOException("Padding in KexInitPacket!");
+		if (tr.remain() != 0) {
+			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+		}
 	}
 
 	public byte[] getPayload()

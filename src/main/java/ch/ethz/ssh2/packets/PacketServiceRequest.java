@@ -6,6 +6,9 @@ package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
 
+import ch.ethz.ssh2.PacketFormatException;
+import ch.ethz.ssh2.PacketTypeException;
+
 /**
  * PacketServiceRequest.
  * 
@@ -38,13 +41,14 @@ public class PacketServiceRequest
 		int packet_type = tr.readByte();
 
 		if (packet_type != Packets.SSH_MSG_SERVICE_REQUEST)
-			throw new IOException("This is not a SSH_MSG_SERVICE_REQUEST! ("
-					+ packet_type + ")");
+		{
+			throw new PacketTypeException(packet_type);
+		}
 
 		serviceName = tr.readString();
 
 		if (tr.remain() != 0)
-			throw new IOException("Padding in SSH_MSG_SERVICE_REQUEST packet!");
+			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
 	}
 
 	public byte[] getPayload()

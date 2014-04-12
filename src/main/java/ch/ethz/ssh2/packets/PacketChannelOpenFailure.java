@@ -6,6 +6,8 @@ package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
 
+import ch.ethz.ssh2.PacketFormatException;
+
 /**
  * PacketChannelOpenFailure.
  * 
@@ -49,8 +51,9 @@ public class PacketChannelOpenFailure
 		description = tr.readString();
 		languageTag = tr.readString();
 		
-		if (tr.remain() != 0)
-			throw new IOException("Padding in SSH_MSG_CHANNEL_OPEN_FAILURE packet!");
+		if (tr.remain() != 0) {
+			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+		}
 	}
 
 	public byte[] getPayload()

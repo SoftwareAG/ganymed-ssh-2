@@ -7,6 +7,9 @@ package ch.ethz.ssh2.packets;
 import java.io.IOException;
 import java.math.BigInteger;
 
+import ch.ethz.ssh2.PacketFormatException;
+import ch.ethz.ssh2.PacketTypeException;
+
 /**
  * PacketKexDHInit.
  * 
@@ -34,12 +37,15 @@ public class PacketKexDHInit
 		int packet_type = tr.readByte();
 
 		if (packet_type != Packets.SSH_MSG_KEXDH_INIT)
-			throw new IOException("This is not a SSH_MSG_KEXDH_INIT! ("
-					+ packet_type + ")");
+		{
+			throw new PacketTypeException(packet_type);
+		}
 
 		e = tr.readMPINT();
 
-		if (tr.remain() != 0) throw new IOException("PADDING IN SSH_MSG_KEXDH_INIT!");
+		if (tr.remain() != 0) {
+			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+		}
 	}
 	
 	public BigInteger getE()

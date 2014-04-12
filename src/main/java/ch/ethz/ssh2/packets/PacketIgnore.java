@@ -6,6 +6,8 @@ package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
 
+import ch.ethz.ssh2.PacketTypeException;
+
 /**
  * PacketIgnore.
  * 
@@ -38,8 +40,9 @@ public class PacketIgnore
 		int packet_type = tr.readByte();
 
 		if (packet_type != Packets.SSH_MSG_IGNORE)
-			throw new IOException("This is not a SSH_MSG_IGNORE packet! (" + packet_type + ")");
-
+		{
+			throw new PacketTypeException(packet_type);
+		}
 		/* Could parse String body */
 	}
 

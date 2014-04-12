@@ -8,6 +8,8 @@ import java.io.IOException;
 
 import java.math.BigInteger;
 
+import ch.ethz.ssh2.PacketFormatException;
+
 /**
  * PacketKexDhGexGroup.
  * 
@@ -39,7 +41,9 @@ public class PacketKexDhGexGroup
 		g = tr.readMPINT();
 
 		if (tr.remain() != 0)
-			throw new IOException("PADDING IN SSH_MSG_KEX_DH_GEX_GROUP!");
+		{
+			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+		}
 	}
 
 	public BigInteger getG()

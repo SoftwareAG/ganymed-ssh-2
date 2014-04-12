@@ -6,6 +6,8 @@ package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
 
+import ch.ethz.ssh2.PacketTypeException;
+
 /**
  * PacketUserauthInfoRequest.
  * 
@@ -34,8 +36,9 @@ public class PacketUserauthInfoRequest
 		int packet_type = tr.readByte();
 
 		if (packet_type != Packets.SSH_MSG_USERAUTH_INFO_REQUEST)
-			throw new IOException("This is not a SSH_MSG_USERAUTH_INFO_REQUEST! (" + packet_type + ")");
-
+		{
+			throw new PacketTypeException(packet_type);
+		}
 		name = tr.readString();
 		instruction = tr.readString();
 		languageTag = tr.readString();
