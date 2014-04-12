@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 
+import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.crypto.digest.SHA1;
 import ch.ethz.ssh2.log.Logger;
 import ch.ethz.ssh2.packets.TypesReader;
@@ -38,7 +39,7 @@ public class DSASHA1Verify
 		BigInteger y = tr.readMPINT();
 
 		if (tr.remain() != 0)
-			throw new IOException("Padding in DSA public key!");
+			throw new PacketFormatException("Padding in DSA public key!");
 
 		return new DSAPublicKey(p, q, g, y);
 	}
@@ -95,15 +96,15 @@ public class DSASHA1Verify
 			String sig_format = tr.readString();
 
 			if (sig_format.equals("ssh-dss") == false)
-				throw new IOException("Peer sent wrong signature format");
+				throw new PacketFormatException("Peer sent wrong signature format");
 
 			rsArray = tr.readByteString();
 
 			if (rsArray.length != 40)
-				throw new IOException("Peer sent corrupt signature");
+				throw new PacketFormatException("Peer sent corrupt signature");
 
 			if (tr.remain() != 0)
-				throw new IOException("Padding in DSA signature!");
+				throw new PacketFormatException("Padding in DSA signature!");
 		}
 
 		/* Remember, s and r are unsigned ints. */
