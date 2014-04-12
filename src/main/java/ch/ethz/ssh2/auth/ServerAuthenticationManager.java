@@ -64,10 +64,6 @@ public class ServerAuthenticationManager implements MessageHandler
 
     public void handleMessage(byte[] msg, int msglen) throws IOException
 	{
-		synchronized (state)
-		{
-		}
-
 		/* Ignore all authentication messages after successful auth */
 
 		if (state.flag_auth_completed)
