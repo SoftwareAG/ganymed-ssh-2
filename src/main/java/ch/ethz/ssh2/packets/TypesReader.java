@@ -8,11 +8,10 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 import ch.ethz.ssh2.util.StringEncoder;
-import ch.ethz.ssh2.util.Tokenizer;
 
 /**
  * TypesReader.
- * 
+ *
  * @author Christian Plattner
  * @version 2.50, 03/15/10
  */
@@ -168,7 +167,7 @@ public class TypesReader
 
 	public String[] readNameList() throws IOException
 	{
-		return Tokenizer.parseTokens(readString(), ',');
+		return readString().split(",");
 	}
 
 	public int remain()
