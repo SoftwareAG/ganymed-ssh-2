@@ -107,11 +107,6 @@ public class SFTPv3Client
 		is = sess.getStdout();
 		os = new BufferedOutputStream(sess.getStdin(), 2048);
 
-		if (is == null)
-		{
-			throw new IOException("There is a problem with the streams of the underlying channel.");
-		}
-
 		init();
 	}
 
@@ -189,12 +184,12 @@ public class SFTPv3Client
 	{
 		if (handle.client != this)
 		{
-			throw new IOException("The file handle was created with another SFTPv3FileHandle instance.");
+			throw new IllegalStateException("The file handle was created with another SFTPv3FileHandle instance.");
 		}
 
 		if (handle.isClosed)
 		{
-			throw new IOException("The file handle is closed.");
+			throw new IllegalStateException("The file handle is closed.");
 		}
 	}
 
