@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.security.SecureRandom;
 
 import ch.ethz.ssh2.ConnectionInfo;
+import ch.ethz.ssh2.PacketTypeException;
 import ch.ethz.ssh2.ServerHostKeyVerifier;
 import ch.ethz.ssh2.compression.CompressionFactory;
 import ch.ethz.ssh2.compression.Compressor;
@@ -77,11 +78,12 @@ public class ClientKexManager extends KexManager {
         }
     }
 
+	@Override
     public synchronized void handleMessage(byte[] msg, int msglen) throws IOException {
         PacketKexInit kip;
 
         if((kxs == null) && (msg[0] != Packets.SSH_MSG_KEXINIT)) {
-            throw new IOException("Unexpected KEX message (type " + msg[0] + ")");
+            throw new PacketTypeException(msg[0]);
         }
 
         if(ignore_next_kex_packet) {
@@ -91,7 +93,7 @@ public class ClientKexManager extends KexManager {
 
         if(msg[0] == Packets.SSH_MSG_KEXINIT) {
             if((kxs != null) && (kxs.state != 0)) {
-                throw new IOException("Unexpected SSH_MSG_KEXINIT message during on-going kex exchange!");
+				throw new PacketTypeException(msg[0]);
             }
 
             if(kxs == null) {
