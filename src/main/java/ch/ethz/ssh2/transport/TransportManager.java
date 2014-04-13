@@ -462,7 +462,7 @@ public abstract class TransportManager {
     }
 
     private void receiveLoop() throws IOException {
-        byte[] msg = new byte[35000];
+        byte[] msg = new byte[MAX_PACKET_SIZE];
 
         while(true) {
             int msglen;
