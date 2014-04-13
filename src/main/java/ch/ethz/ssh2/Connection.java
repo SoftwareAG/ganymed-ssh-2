@@ -1079,47 +1079,6 @@ public class Connection {
     }
 
     /**
-     * Removes duplicates from a String array, keeps only first occurence
-     * of each element. Does not destroy order of elements; can handle nulls.
-     * Uses a very efficient O(N^2) algorithm =)
-     *
-     * @param list a String array.
-     * @return a cleaned String array.
-     */
-    private String[] removeDuplicates(String[] list) {
-        if((list == null) || (list.length < 2)) {
-            return list;
-        }
-
-        String[] list2 = new String[list.length];
-
-        int count = 0;
-
-        for(final String element : list) {
-            boolean duplicate = false;
-            for(int j = 0; j < count; j++) {
-                if(((element == null) && (list2[j] == null)) || ((element != null) && (element.equals(list2[j])))) {
-                    duplicate = true;
-                    break;
-                }
-            }
-            if(duplicate) {
-                continue;
-            }
-            list2[count++] = element;
-        }
-
-        if(count == list2.length) {
-            return list2;
-        }
-
-        String[] tmp = new String[count];
-        System.arraycopy(list2, 0, tmp, 0, count);
-
-        return tmp;
-    }
-
-    /**
      * Controls whether compression is used on the link or not.
      */
     public synchronized void setCompression(String[] algorithms) {
@@ -1139,28 +1098,19 @@ public class Connection {
 
     /**
      * Unless you know what you are doing, you will never need this.
-     *
-     * @param ciphers
      */
-    public synchronized void setClient2ServerCiphers(String[] ciphers) {
+    public synchronized void setClient2ServerCiphers(final String[] ciphers) {
         if((ciphers == null) || (ciphers.length == 0)) {
             throw new IllegalArgumentException();
         }
-        ciphers = removeDuplicates(ciphers);
         BlockCipherFactory.checkCipherList(ciphers);
         cryptoWishList.c2s_enc_algos = ciphers;
     }
 
     /**
      * Unless you know what you are doing, you will never need this.
-     *
-     * @param macs
      */
-    public synchronized void setClient2ServerMACs(String[] macs) {
-        if((macs == null) || (macs.length == 0)) {
-            throw new IllegalArgumentException();
-        }
-        macs = removeDuplicates(macs);
+    public synchronized void setClient2ServerMACs(final String[] macs) {
         MAC.checkMacList(macs);
         cryptoWishList.c2s_mac_algos = macs;
     }
@@ -1182,29 +1132,16 @@ public class Connection {
 
     /**
      * Unless you know what you are doing, you will never need this.
-     *
-     * @param ciphers
      */
-    public synchronized void setServer2ClientCiphers(String[] ciphers) {
-        if((ciphers == null) || (ciphers.length == 0)) {
-            throw new IllegalArgumentException();
-        }
-        ciphers = removeDuplicates(ciphers);
+    public synchronized void setServer2ClientCiphers(final String[] ciphers) {
         BlockCipherFactory.checkCipherList(ciphers);
         cryptoWishList.s2c_enc_algos = ciphers;
     }
 
     /**
      * Unless you know what you are doing, you will never need this.
-     *
-     * @param macs
      */
-    public synchronized void setServer2ClientMACs(String[] macs) {
-        if((macs == null) || (macs.length == 0)) {
-            throw new IllegalArgumentException();
-        }
-
-        macs = removeDuplicates(macs);
+    public synchronized void setServer2ClientMACs(final String[] macs) {
         MAC.checkMacList(macs);
         cryptoWishList.s2c_mac_algos = macs;
     }
@@ -1221,12 +1158,7 @@ public class Connection {
      *              the entry at index 0 is the most preferred one. You must specify
      *              at least one entry.
      */
-    public synchronized void setServerHostKeyAlgorithms(String[] algos) {
-        if((algos == null) || (algos.length == 0)) {
-            throw new IllegalArgumentException();
-        }
-
-        algos = removeDuplicates(algos);
+    public synchronized void setServerHostKeyAlgorithms(final String[] algos) {
         KexManager.checkServerHostkeyAlgorithmsList(algos);
         cryptoWishList.serverHostKeyAlgorithms = algos;
     }
