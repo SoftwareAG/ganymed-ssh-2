@@ -15,6 +15,7 @@ import java.util.List;
 import ch.ethz.ssh2.ConnectionInfo;
 import ch.ethz.ssh2.ConnectionMonitor;
 import ch.ethz.ssh2.DHGexParameters;
+import ch.ethz.ssh2.PacketTypeException;
 import ch.ethz.ssh2.compression.Compressor;
 import ch.ethz.ssh2.crypto.CryptoWishList;
 import ch.ethz.ssh2.crypto.cipher.BlockCipher;
@@ -90,20 +91,19 @@ public abstract class TransportManager {
 
                 synchronized(asynchronousQueue) {
                     if(asynchronousQueue.size() == 0) {
-                        /* Only now we may reset the flag, since we are sure that all queued items
-                         * have been sent (there is a slight delay between de-queuing and sending,
-						 * this is why we need this flag! See code below. Sending takes place outside
-						 * of this lock, this is why a test for size()==0 (from another thread) does not ensure
-						 * that all messages have been sent.
-						 */
+                        // Only now we may reset the flag, since we are sure that all queued items
+                        // have been sent (there is a slight delay between de-queuing and sending,
+                        // this is why we need this flag! See code below. Sending takes place outside
+                        // of this lock, this is why a test for size()==0 (from another thread) does not ensure
+                        // that all messages have been sent.
 
                         asynchronousPending = false;
 
-						/* Notify any senders that they can proceed, all async messages have been delivered */
+                        // Notify any senders that they can proceed, all async messages have been delivered
 
                         asynchronousQueue.notifyAll();
 
-						/* After the queue is empty for about 2 seconds, stop this thread */
+                        // After the queue is empty for about 2 seconds, stop this thread
 
                         try {
                             asynchronousQueue.wait(2000);
@@ -120,25 +120,19 @@ public abstract class TransportManager {
                     item = asynchronousQueue.remove(0);
                 }
 
-				/* The following invocation may throw an IOException.
-                 * There is no point in handling it - it simply means
-				 * that the connection has a problem and we should stop
-				 * sending asynchronously messages. We do not need to signal that
-				 * we have exited (asynchronousThread = null): further
-				 * messages in the queue cannot be sent by this or any
-				 * other thread.
-				 * Other threads will sooner or later (when receiving or
-				 * sending the next message) get the same IOException and
-				 * get to the same conclusion.
-				 */
 
                 try {
                     sendMessageImmediate(item.msg);
                 }
                 catch(IOException e) {
+                    // There is no point in handling it - it simply means that the connection has a problem and we should stop
+                    // sending asynchronously messages. We do not need to signal that we have exited (asynchronousThread = null):
+                    // further messages in the queue cannot be sent by this or any other thread.
+                    // Other threads will sooner or later (when receiving or sending the next message) get the
+                    // same IOException and get to the same conclusion.
+                    log.warning(e.getMessage());
                     return;
                 }
-
                 if(item.run != null) {
                     try {
                         item.run.run();
@@ -264,7 +258,7 @@ public abstract class TransportManager {
                 }
             }
         });
-
+        receiveThread.setName("Transport Manager");
         receiveThread.setDaemon(true);
         receiveThread.start();
     }
@@ -463,7 +457,6 @@ public abstract class TransportManager {
 
     private void receiveLoop() throws IOException {
         byte[] msg = new byte[MAX_PACKET_SIZE];
-
         while(true) {
             int msglen;
             try {
@@ -479,103 +472,60 @@ public abstract class TransportManager {
             }
             idle = true;
 
-            int type = msg[0] & 0xff;
+            final int type = msg[0] & 0xff;
 
-            if(type == Packets.SSH_MSG_IGNORE) {
-                continue;
-            }
-
-            if(type == Packets.SSH_MSG_DEBUG) {
-                if(log.isDebugEnabled()) {
+            switch(type) {
+                case Packets.SSH_MSG_IGNORE:
+                    break;
+                case Packets.SSH_MSG_DEBUG:
+                    if(log.isDebugEnabled()) {
+                        TypesReader tr = new TypesReader(msg, 0, msglen);
+                        tr.readByte();
+                        tr.readBoolean();
+                        String message = tr.readString();
+                        if(log.isDebugEnabled()) {
+                            log.debug(String.format("Debug message from remote: '%s'", message));
+                        }
+                    }
+                    break;
+                case Packets.SSH_MSG_UNIMPLEMENTED:
+                    throw new PacketTypeException(type);
+                case Packets.SSH_MSG_DISCONNECT:
                     TypesReader tr = new TypesReader(msg, 0, msglen);
                     tr.readByte();
-                    tr.readBoolean();
-                    StringBuilder debugMessageBuffer = new StringBuilder();
-                    debugMessageBuffer.append(tr.readString("UTF-8"));
-
-                    for(int i = 0; i < debugMessageBuffer.length(); i++) {
-                        char c = debugMessageBuffer.charAt(i);
-
-                        if((c >= 32) && (c <= 126)) {
-                            continue;
-                        }
-                        debugMessageBuffer.setCharAt(i, '\uFFFD');
-                    }
-
-                    log.debug("DEBUG Message from remote: '" + debugMessageBuffer.toString() + "'");
-                }
-                continue;
-            }
-
-            if(type == Packets.SSH_MSG_UNIMPLEMENTED) {
-                throw new IOException("Peer sent UNIMPLEMENTED message, that should not happen.");
-            }
-
-            if(type == Packets.SSH_MSG_DISCONNECT) {
-                TypesReader tr = new TypesReader(msg, 0, msglen);
-                tr.readByte();
-                int reason_code = tr.readUINT32();
-                StringBuilder reasonBuffer = new StringBuilder();
-                reasonBuffer.append(tr.readString("UTF-8"));
-
-				/*
-                 * Do not get fooled by servers that send abnormal long error
-				 * messages
-				 */
-
-                if(reasonBuffer.length() > 255) {
-                    reasonBuffer.setLength(255);
-                    reasonBuffer.setCharAt(254, '.');
-                    reasonBuffer.setCharAt(253, '.');
-                    reasonBuffer.setCharAt(252, '.');
-                }
-
-				/*
-                 * Also, check that the server did not send characters that may
-				 * screw up the receiver -> restrict to reasonable US-ASCII
-				 * subset -> "printable characters" (ASCII 32 - 126). Replace
-				 * all others with 0xFFFD (UNICODE replacement character).
-				 */
-
-                for(int i = 0; i < reasonBuffer.length(); i++) {
-                    char c = reasonBuffer.charAt(i);
-
-                    if((c >= 32) && (c <= 126)) {
-                        continue;
-                    }
-                    reasonBuffer.setCharAt(i, '\uFFFD');
-                }
-
-                throw new IOException("Peer sent DISCONNECT message (reason code " + reason_code + "): "
-                        + reasonBuffer.toString());
-            }
-
-			/*
-             * Is it a KEX Packet?
-			 */
-
-            if((type == Packets.SSH_MSG_KEXINIT) || (type == Packets.SSH_MSG_NEWKEYS)
-                    || ((type >= 30) && (type <= 49))) {
-                km.handleMessage(msg, msglen);
-                continue;
-            }
-            if(type == Packets.SSH_MSG_USERAUTH_SUCCESS) {
-                tc.startCompression();
-            }
-            MessageHandler mh = null;
-
-            for(HandlerEntry he : messageHandlers) {
-                if((he.low <= type) && (type <= he.high)) {
-                    mh = he.mh;
+                    int reason_code = tr.readUINT32();
+                    String reason_message = tr.readString();
+                    throw new IOException(String.format("%d %s", reason_code, reason_message));
+                case Packets.SSH_MSG_KEXINIT:
+                case Packets.SSH_MSG_NEWKEYS:
+                case Packets.SSH_MSG_KEXDH_INIT:
+                case Packets.SSH_MSG_KEXDH_REPLY:
+                case Packets.SSH_MSG_KEX_DH_GEX_REQUEST:
+                case Packets.SSH_MSG_KEX_DH_GEX_INIT:
+                case Packets.SSH_MSG_KEX_DH_GEX_REPLY:
+                    // Is it a KEX Packet
+                    km.handleMessage(msg, msglen);
                     break;
-                }
+                case Packets.SSH_MSG_USERAUTH_SUCCESS:
+                    tc.startCompression();
+                    // Continue with message handlers
+                default:
+                    boolean handled = false;
+                    for(HandlerEntry handler : messageHandlers) {
+                        if((handler.low <= type) && (type <= handler.high)) {
+                            handler.mh.handleMessage(msg, msglen);
+                            handled = true;
+                            break;
+                        }
+                    }
+                    if(!handled) {
+                        throw new PacketTypeException(type);
+                    }
+                    break;
             }
-
-            if(mh == null) {
-                throw new IOException("Unexpected SSH message (type " + type + ")");
+            if(log.isDebugEnabled()) {
+                log.debug(String.format("Handled packet %d", type));
             }
-
-            mh.handleMessage(msg, msglen);
         }
     }
 }
