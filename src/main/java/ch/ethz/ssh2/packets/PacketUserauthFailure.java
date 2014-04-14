@@ -5,69 +5,64 @@
 package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketUserauthBanner.
- * 
  * @author Christian Plattner
  * @version 2.50, 03/15/10
  */
-public class PacketUserauthFailure
-{
-	byte[] payload;
+public class PacketUserauthFailure {
 
-	String[] authThatCanContinue;
-	boolean partialSuccess;
+    private byte[] payload;
 
-	public PacketUserauthFailure(String[] authThatCanContinue, boolean partialSuccess)
-	{
-		this.authThatCanContinue = authThatCanContinue;
-		this.partialSuccess = partialSuccess;
-	}
+    private Set<String> authThatCanContinue;
+    private boolean partialSuccess;
 
-	public PacketUserauthFailure(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+    public PacketUserauthFailure(Set<String> authThatCanContinue, boolean partialSuccess) {
+        this.authThatCanContinue = authThatCanContinue;
+        this.partialSuccess = partialSuccess;
+    }
 
-		TypesReader tr = new TypesReader(payload, off, len);
+    public PacketUserauthFailure(byte payload[], int off, int len) throws IOException {
+        this.payload = new byte[len];
+        System.arraycopy(payload, off, this.payload, 0, len);
 
-		int packet_type = tr.readByte();
+        TypesReader tr = new TypesReader(payload, off, len);
 
-		if (packet_type != Packets.SSH_MSG_USERAUTH_FAILURE)
-		{
-			throw new PacketTypeException(packet_type);
-		}
-		authThatCanContinue = tr.readNameList();
-		partialSuccess = tr.readBoolean();
+        int packet_type = tr.readByte();
 
-		if (tr.remain() != 0)
-			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
-	}
+        if(packet_type != Packets.SSH_MSG_USERAUTH_FAILURE) {
+            throw new PacketTypeException(packet_type);
+        }
+        authThatCanContinue = new HashSet<String>(Arrays.asList(tr.readNameList()));
+        partialSuccess = tr.readBoolean();
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_USERAUTH_FAILURE);
-			tw.writeNameList(authThatCanContinue);
-			tw.writeBoolean(partialSuccess);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
 
-	public String[] getAuthThatCanContinue()
-	{
-		return authThatCanContinue;
-	}
+    public byte[] getPayload() {
+        if(payload == null) {
+            TypesWriter tw = new TypesWriter();
+            tw.writeByte(Packets.SSH_MSG_USERAUTH_FAILURE);
+            tw.writeNameList(authThatCanContinue.toArray(new String[authThatCanContinue.size()]));
+            tw.writeBoolean(partialSuccess);
+            payload = tw.getBytes();
+        }
+        return payload;
+    }
 
-	public boolean isPartialSuccess()
-	{
-		return partialSuccess;
-	}
+    public Set<String> getAuthThatCanContinue() {
+        return authThatCanContinue;
+    }
+
+    public boolean isPartialSuccess() {
+        return partialSuccess;
+    }
 }

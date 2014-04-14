@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import ch.ethz.ssh2.InteractiveCallback;
 import ch.ethz.ssh2.PacketTypeException;
@@ -37,54 +39,38 @@ import ch.ethz.ssh2.transport.MessageHandler;
 /**
  * @author Christian Plattner
  */
-public class AuthenticationManager implements MessageHandler
-{
-	private ClientTransportManager tm;
+public class AuthenticationManager implements MessageHandler {
+    private ClientTransportManager tm;
 
-	private final List<byte[]> packets = new ArrayList<byte[]>();
-	private boolean connectionClosed = false;
+    private final List<byte[]> packets
+            = new ArrayList<byte[]>();
 
-	private String banner;
+    private boolean connectionClosed = false;
 
-	private String[] remainingMethods = new String[0];
-	private boolean isPartialSuccess = false;
+    private String banner;
 
-	private boolean authenticated = false;
-	private boolean initDone = false;
+    private Set<String> remainingMethods
+            = new HashSet<String>();
 
-	public AuthenticationManager(ClientTransportManager tm)
-	{
-		this.tm = tm;
-	}
+    private boolean isPartialSuccess = false;
 
-	boolean methodPossible(String methName)
-	{
-		if (remainingMethods == null)
-			return false;
+    private boolean authenticated = false;
+    private boolean initDone = false;
 
-        for(String remainingMethod : remainingMethods) {
-            if(remainingMethod.compareTo(methName) == 0) {
-                return true;
-            }
-        }
-		return false;
-	}
+    public AuthenticationManager(ClientTransportManager tm) {
+        this.tm = tm;
+    }
 
-    byte[] deQueue() throws IOException
-    {
-        synchronized (packets)
-        {
-            while (packets.size() == 0)
-            {
-                if (connectionClosed) {
+    byte[] deQueue() throws IOException {
+        synchronized(packets) {
+            while(packets.size() == 0) {
+                if(connectionClosed) {
                     throw tm.getReasonClosedCause();
                 }
-                try
-                {
+                try {
                     packets.wait();
                 }
-                catch (InterruptedException e)
-                {
+                catch(InterruptedException e) {
                     throw new InterruptedIOException(e.getMessage());
                 }
             }
@@ -92,385 +78,340 @@ public class AuthenticationManager implements MessageHandler
             packets.remove(0);
             return res;
         }
-   	}
+    }
 
-	byte[] getNextMessage() throws IOException
-	{
-		while (true)
-		{
-			byte[] msg = deQueue();
+    byte[] getNextMessage() throws IOException {
+        while(true) {
+            byte[] msg = deQueue();
 
-			if (msg[0] != Packets.SSH_MSG_USERAUTH_BANNER)
-				return msg;
+            if(msg[0] != Packets.SSH_MSG_USERAUTH_BANNER) {
+                return msg;
+            }
 
-			PacketUserauthBanner sb = new PacketUserauthBanner(msg, 0, msg.length);
+            PacketUserauthBanner sb = new PacketUserauthBanner(msg, 0, msg.length);
+            banner = sb.getBanner();
+        }
+    }
 
-			banner = sb.getBanner();
-		}
-	}
+    public Set<String> getRemainingMethods(String user) throws IOException {
+        initialize(user);
+        return remainingMethods;
+    }
 
-	public String[] getRemainingMethods(String user) throws IOException
-	{
-		initialize(user);
-		return remainingMethods;
-	}
+    public String getBanner() {
+        return banner;
 
-	public String getBanner()
-	{
-		return banner;
+    }
 
-	}
-	public boolean getPartialSuccess()
-	{
-		return isPartialSuccess;
-	}
+    public boolean getPartialSuccess() {
+        return isPartialSuccess;
+    }
 
-	private boolean initialize(String user) throws IOException
-	{
-		if (initDone == false)
-		{
-			tm.registerMessageHandler(this, 0, 255);
+    private boolean initialize(String user) throws IOException {
+        if(initDone == false) {
+            tm.registerMessageHandler(this, 0, 255);
 
-			PacketServiceRequest sr = new PacketServiceRequest("ssh-userauth");
-			tm.sendMessage(sr.getPayload());
+            PacketServiceRequest sr = new PacketServiceRequest("ssh-userauth");
+            tm.sendMessage(sr.getPayload());
 
-			byte[] msg = getNextMessage();
-			new PacketServiceAccept(msg, 0, msg.length);
+            byte[] msg = getNextMessage();
+            new PacketServiceAccept(msg, 0, msg.length);
 
-			PacketUserauthRequestNone urn = new PacketUserauthRequestNone("ssh-connection", user);
-			tm.sendMessage(urn.getPayload());
+            PacketUserauthRequestNone urn = new PacketUserauthRequestNone("ssh-connection", user);
+            tm.sendMessage(urn.getPayload());
 
-			msg = getNextMessage();
+            msg = getNextMessage();
 
-			initDone = true;
+            initDone = true;
 
-			if (msg[0] == Packets.SSH_MSG_USERAUTH_SUCCESS)
-			{
-				authenticated = true;
-				tm.removeMessageHandler(this, 0, 255);
-				return true;
-			}
+            if(msg[0] == Packets.SSH_MSG_USERAUTH_SUCCESS) {
+                authenticated = true;
+                tm.removeMessageHandler(this, 0, 255);
+                return true;
+            }
 
-			if (msg[0] == Packets.SSH_MSG_USERAUTH_FAILURE)
-			{
-				PacketUserauthFailure puf = new PacketUserauthFailure(msg, 0, msg.length);
+            if(msg[0] == Packets.SSH_MSG_USERAUTH_FAILURE) {
+                PacketUserauthFailure puf = new PacketUserauthFailure(msg, 0, msg.length);
 
-				remainingMethods = puf.getAuthThatCanContinue();
-				isPartialSuccess = puf.isPartialSuccess();
-				return false;
-			}
-			throw new PacketTypeException(msg[0]);
-		}
-		return authenticated;
-	}
+                remainingMethods = puf.getAuthThatCanContinue();
+                isPartialSuccess = puf.isPartialSuccess();
+                return false;
+            }
+            throw new PacketTypeException(msg[0]);
+        }
+        return authenticated;
+    }
 
-	public boolean authenticatePublicKey(String user, AgentProxy proxy) throws IOException {
-		initialize(user);
+    public boolean authenticatePublicKey(String user, AgentProxy proxy) throws IOException {
+        initialize(user);
 
-		boolean success;
+        boolean success;
         for(AgentIdentity identity : proxy.getIdentities()) {
             success = authenticatePublicKey(user, identity);
             if(success) {
                 return true;
             }
         }
-		return false;
-	}
+        return false;
+    }
 
-	boolean authenticatePublicKey(String user, AgentIdentity identity) throws IOException {
-		if (methodPossible("publickey") == false)
-			throw new IOException("Authentication method publickey not supported by the server at this stage.");
+    boolean authenticatePublicKey(String user, AgentIdentity identity) throws IOException {
+        if(!remainingMethods.contains("publickey")) {
+            throw new IOException("Authentication method not supported");
+        }
 
-		byte[] pubKeyBlob = identity.getPublicKeyBlob();
-		if(pubKeyBlob == null) {
-			return false;
-		}
+        byte[] pubKeyBlob = identity.getPublicKeyBlob();
+        if(pubKeyBlob == null) {
+            return false;
+        }
 
-		TypesWriter tw = new TypesWriter();
-		byte[] H = tm.getSessionIdentifier();
+        TypesWriter tw = new TypesWriter();
+        byte[] H = tm.getSessionIdentifier();
 
-		tw.writeString(H, 0, H.length);
-		tw.writeByte(Packets.SSH_MSG_USERAUTH_REQUEST);
-		tw.writeString(user);
-		tw.writeString("ssh-connection");
-		tw.writeString("publickey");
-		tw.writeBoolean(true);
-		tw.writeString(identity.getAlgName());
-		tw.writeString(pubKeyBlob, 0, pubKeyBlob.length);
+        tw.writeString(H, 0, H.length);
+        tw.writeByte(Packets.SSH_MSG_USERAUTH_REQUEST);
+        tw.writeString(user);
+        tw.writeString("ssh-connection");
+        tw.writeString("publickey");
+        tw.writeBoolean(true);
+        tw.writeString(identity.getAlgName());
+        tw.writeString(pubKeyBlob, 0, pubKeyBlob.length);
 
-		byte[] msg = tw.getBytes();
-		byte[] response = identity.sign(msg);
+        byte[] msg = tw.getBytes();
+        byte[] response = identity.sign(msg);
 
-		PacketUserauthRequestPublicKey ua = new PacketUserauthRequestPublicKey(
-				"ssh-connection", user, identity.getAlgName(), pubKeyBlob, response);
-		tm.sendMessage(ua.getPayload());
+        PacketUserauthRequestPublicKey ua = new PacketUserauthRequestPublicKey(
+                "ssh-connection", user, identity.getAlgName(), pubKeyBlob, response);
+        tm.sendMessage(ua.getPayload());
 
-		byte[] ar = getNextMessage();
+        byte[] ar = getNextMessage();
 
-		if (ar[0] == Packets.SSH_MSG_USERAUTH_SUCCESS)
-		{
-			authenticated = true;
-			tm.removeMessageHandler(this, 0, 255);
-			return true;
-		}
+        final int type = ar[0];
+        if(type == Packets.SSH_MSG_USERAUTH_SUCCESS) {
+            authenticated = true;
+            tm.removeMessageHandler(this, 0, 255);
+            return true;
+        }
 
-		if (ar[0] == Packets.SSH_MSG_USERAUTH_FAILURE)
-		{
-			PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
+        if(type == Packets.SSH_MSG_USERAUTH_FAILURE) {
+            PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
 
-			remainingMethods = puf.getAuthThatCanContinue();
-			isPartialSuccess = puf.isPartialSuccess();
+            remainingMethods = puf.getAuthThatCanContinue();
+            isPartialSuccess = puf.isPartialSuccess();
 
-			return false;
-		}
-		throw new PacketTypeException(ar[0]);
-	}
+            return false;
+        }
+        throw new PacketTypeException(type);
+    }
 
-	public boolean authenticatePublicKey(String user, char[] PEMPrivateKey, String password, SecureRandom rnd)
-			throws IOException
-	{
-		try
-		{
-			initialize(user);
+    public boolean authenticatePublicKey(String user, char[] PEMPrivateKey, String password, SecureRandom rnd)
+            throws IOException {
+        try {
+            initialize(user);
 
-			if (methodPossible("publickey") == false)
-				throw new IOException("Authentication method publickey not supported by the server at this stage.");
+            if(!remainingMethods.contains("publickey")) {
+                throw new IOException("Authentication method publickey not supported by the server at this stage.");
+            }
 
-			Object key = PEMDecoder.decode(PEMPrivateKey, password);
+            Object key = PEMDecoder.decode(PEMPrivateKey, password);
 
-			if (key instanceof DSAPrivateKey)
-			{
-				DSAPrivateKey pk = (DSAPrivateKey) key;
+            if(key instanceof DSAPrivateKey) {
+                DSAPrivateKey pk = (DSAPrivateKey) key;
 
-				byte[] pk_enc = DSASHA1Verify.encodeSSHDSAPublicKey(pk.getPublicKey());
+                byte[] pk_enc = DSASHA1Verify.encodeSSHDSAPublicKey(pk.getPublicKey());
 
-				TypesWriter tw = new TypesWriter();
+                TypesWriter tw = new TypesWriter();
 
-				byte[] H = tm.getSessionIdentifier();
+                byte[] H = tm.getSessionIdentifier();
 
-				tw.writeString(H, 0, H.length);
-				tw.writeByte(Packets.SSH_MSG_USERAUTH_REQUEST);
-				tw.writeString(user);
-				tw.writeString("ssh-connection");
-				tw.writeString("publickey");
-				tw.writeBoolean(true);
-				tw.writeString("ssh-dss");
-				tw.writeString(pk_enc, 0, pk_enc.length);
+                tw.writeString(H, 0, H.length);
+                tw.writeByte(Packets.SSH_MSG_USERAUTH_REQUEST);
+                tw.writeString(user);
+                tw.writeString("ssh-connection");
+                tw.writeString("publickey");
+                tw.writeBoolean(true);
+                tw.writeString("ssh-dss");
+                tw.writeString(pk_enc, 0, pk_enc.length);
 
-				byte[] msg = tw.getBytes();
+                byte[] msg = tw.getBytes();
 
-				DSASignature ds = DSASHA1Verify.generateSignature(msg, pk, rnd);
+                DSASignature ds = DSASHA1Verify.generateSignature(msg, pk, rnd);
 
-				byte[] ds_enc = DSASHA1Verify.encodeSSHDSASignature(ds);
+                byte[] ds_enc = DSASHA1Verify.encodeSSHDSASignature(ds);
 
-				PacketUserauthRequestPublicKey ua = new PacketUserauthRequestPublicKey("ssh-connection", user,
-						"ssh-dss", pk_enc, ds_enc);
-				tm.sendMessage(ua.getPayload());
-			}
-			else if (key instanceof RSAPrivateKey)
-			{
-				RSAPrivateKey pk = (RSAPrivateKey) key;
+                PacketUserauthRequestPublicKey ua = new PacketUserauthRequestPublicKey("ssh-connection", user,
+                        "ssh-dss", pk_enc, ds_enc);
+                tm.sendMessage(ua.getPayload());
+            }
+            else if(key instanceof RSAPrivateKey) {
+                RSAPrivateKey pk = (RSAPrivateKey) key;
 
-				byte[] pk_enc = RSASHA1Verify.encodeSSHRSAPublicKey(pk.getPublicKey());
+                byte[] pk_enc = RSASHA1Verify.encodeSSHRSAPublicKey(pk.getPublicKey());
 
-				TypesWriter tw = new TypesWriter();
-				{
-					byte[] H = tm.getSessionIdentifier();
+                TypesWriter tw = new TypesWriter();
+                {
+                    byte[] H = tm.getSessionIdentifier();
 
-					tw.writeString(H, 0, H.length);
-					tw.writeByte(Packets.SSH_MSG_USERAUTH_REQUEST);
-					tw.writeString(user);
-					tw.writeString("ssh-connection");
-					tw.writeString("publickey");
-					tw.writeBoolean(true);
-					tw.writeString("ssh-rsa");
-					tw.writeString(pk_enc, 0, pk_enc.length);
-				}
+                    tw.writeString(H, 0, H.length);
+                    tw.writeByte(Packets.SSH_MSG_USERAUTH_REQUEST);
+                    tw.writeString(user);
+                    tw.writeString("ssh-connection");
+                    tw.writeString("publickey");
+                    tw.writeBoolean(true);
+                    tw.writeString("ssh-rsa");
+                    tw.writeString(pk_enc, 0, pk_enc.length);
+                }
 
-				byte[] msg = tw.getBytes();
+                byte[] msg = tw.getBytes();
 
-				RSASignature ds = RSASHA1Verify.generateSignature(msg, pk);
+                RSASignature ds = RSASHA1Verify.generateSignature(msg, pk);
 
-				byte[] rsa_sig_enc = RSASHA1Verify.encodeSSHRSASignature(ds);
+                byte[] rsa_sig_enc = RSASHA1Verify.encodeSSHRSASignature(ds);
 
-				PacketUserauthRequestPublicKey ua = new PacketUserauthRequestPublicKey("ssh-connection", user,
-						"ssh-rsa", pk_enc, rsa_sig_enc);
-				tm.sendMessage(ua.getPayload());
-			}
-			else
-			{
-				throw new IOException("Unknown private key type returned by the PEM decoder.");
-			}
+                PacketUserauthRequestPublicKey ua = new PacketUserauthRequestPublicKey("ssh-connection", user,
+                        "ssh-rsa", pk_enc, rsa_sig_enc);
+                tm.sendMessage(ua.getPayload());
+            }
+            else {
+                throw new IOException("Unknown private key type returned by the PEM decoder.");
+            }
 
-			byte[] ar = getNextMessage();
+            byte[] ar = getNextMessage();
 
-			if (ar[0] == Packets.SSH_MSG_USERAUTH_SUCCESS)
-			{
-				authenticated = true;
-				tm.removeMessageHandler(this, 0, 255);
-				return true;
-			}
+            final int type = ar[0];
+            switch(type) {
+                case Packets.SSH_MSG_USERAUTH_SUCCESS:
+                    authenticated = true;
+                    tm.removeMessageHandler(this, 0, 255);
+                    return true;
+                case Packets.SSH_MSG_USERAUTH_FAILURE:
+                    PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
 
-			if (ar[0] == Packets.SSH_MSG_USERAUTH_FAILURE)
-			{
-				PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
+                    remainingMethods = puf.getAuthThatCanContinue();
+                    isPartialSuccess = puf.isPartialSuccess();
 
-				remainingMethods = puf.getAuthThatCanContinue();
-				isPartialSuccess = puf.isPartialSuccess();
+                    return false;
+            }
+            throw new PacketTypeException(type);
+        }
+        catch(IOException e) {
+            tm.close(e);
+            throw new IOException("Publickey authentication failed.", e);
+        }
+    }
 
-				return false;
-			}
-			throw new PacketTypeException(ar[0]);
-		}
-		catch (IOException e)
-		{
-			tm.close(e);
-			throw new IOException("Publickey authentication failed.", e);
-		}
-	}
+    public boolean authenticateNone(String user) throws IOException {
+        try {
+            initialize(user);
+            return authenticated;
+        }
+        catch(IOException e) {
+            tm.close(e);
+            throw new IOException("None authentication failed.", e);
+        }
+    }
 
-	public boolean authenticateNone(String user) throws IOException
-	{
-		try
-		{
-			initialize(user);
-			return authenticated;
-		}
-		catch (IOException e)
-		{
-			tm.close(e);
-			throw new IOException("None authentication failed.", e);
-		}
-	}
+    public boolean authenticatePassword(String user, String pass) throws IOException {
+        try {
+            initialize(user);
 
-	public boolean authenticatePassword(String user, String pass) throws IOException
-	{
-		try
-		{
-			initialize(user);
+            if(!remainingMethods.contains("password")) {
+                throw new IOException("Authentication method not supported");
+            }
 
-			if (methodPossible("password") == false)
-				throw new IOException("Authentication method password not supported by the server at this stage.");
+            PacketUserauthRequestPassword ua = new PacketUserauthRequestPassword("ssh-connection", user, pass);
+            tm.sendMessage(ua.getPayload());
 
-			PacketUserauthRequestPassword ua = new PacketUserauthRequestPassword("ssh-connection", user, pass);
-			tm.sendMessage(ua.getPayload());
+            byte[] ar = getNextMessage();
 
-			byte[] ar = getNextMessage();
+            switch(ar[0]) {
+                case Packets.SSH_MSG_USERAUTH_SUCCESS:
+                    authenticated = true;
+                    tm.removeMessageHandler(this, 0, 255);
+                    return true;
+                case Packets.SSH_MSG_USERAUTH_FAILURE:
+                    PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
+                    remainingMethods = puf.getAuthThatCanContinue();
+                    isPartialSuccess = puf.isPartialSuccess();
+                    return false;
+            }
+            throw new PacketTypeException(ar[0]);
+        }
+        catch(IOException e) {
+            tm.close(e);
+            throw new IOException("Password authentication failed.", e);
+        }
+    }
 
-			if (ar[0] == Packets.SSH_MSG_USERAUTH_SUCCESS)
-			{
-				authenticated = true;
-				tm.removeMessageHandler(this, 0, 255);
-				return true;
-			}
+    public boolean authenticateInteractive(String user, String[] submethods, InteractiveCallback cb) throws IOException {
+        try {
+            initialize(user);
 
-			if (ar[0] == Packets.SSH_MSG_USERAUTH_FAILURE)
-			{
-				PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
+            if(!remainingMethods.contains("keyboard-interactive")) {
+                throw new IOException(
+                        "Authentication method keyboard-interactive not supported by the server at this stage.");
+            }
 
-				remainingMethods = puf.getAuthThatCanContinue();
-				isPartialSuccess = puf.isPartialSuccess();
+            PacketUserauthRequestInteractive ua = new PacketUserauthRequestInteractive("ssh-connection", user,
+                    submethods);
 
-				return false;
-			}
-			throw new PacketTypeException(ar[0]);
-		}
-		catch (IOException e)
-		{
-			tm.close(e);
-			throw new IOException("Password authentication failed.", e);
-		}
-	}
+            tm.sendMessage(ua.getPayload());
 
-	public boolean authenticateInteractive(String user, String[] submethods, InteractiveCallback cb) throws IOException
-	{
-		try
-		{
-			initialize(user);
+            while(true) {
+                byte[] ar = getNextMessage();
 
-			if (methodPossible("keyboard-interactive") == false)
-				throw new IOException(
-						"Authentication method keyboard-interactive not supported by the server at this stage.");
+                final int type = ar[0];
+                switch(type) {
+                    case Packets.SSH_MSG_USERAUTH_SUCCESS:
+                        authenticated = true;
+                        tm.removeMessageHandler(this, 0, 255);
+                        return true;
+                    case Packets.SSH_MSG_USERAUTH_FAILURE:
+                        PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
 
-			if (submethods == null)
-				submethods = new String[0];
+                        remainingMethods = puf.getAuthThatCanContinue();
+                        isPartialSuccess = puf.isPartialSuccess();
 
-			PacketUserauthRequestInteractive ua = new PacketUserauthRequestInteractive("ssh-connection", user,
-					submethods);
-
-			tm.sendMessage(ua.getPayload());
-
-			while (true)
-			{
-				byte[] ar = getNextMessage();
-
-				if (ar[0] == Packets.SSH_MSG_USERAUTH_SUCCESS)
-				{
-					authenticated = true;
-					tm.removeMessageHandler(this, 0, 255);
-					return true;
-				}
-
-				if (ar[0] == Packets.SSH_MSG_USERAUTH_FAILURE)
-				{
-					PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
-
-					remainingMethods = puf.getAuthThatCanContinue();
-					isPartialSuccess = puf.isPartialSuccess();
-
-					return false;
-				}
-
-				if (ar[0] == Packets.SSH_MSG_USERAUTH_INFO_REQUEST)
-				{
-					PacketUserauthInfoRequest pui = new PacketUserauthInfoRequest(ar, 0, ar.length);
-
-					String[] responses;
-
-					try
-					{
-						responses = cb.replyToChallenge(pui.getName(), pui.getInstruction(), pui.getNumPrompts(), pui
-								.getPrompt(), pui.getEcho());
-					}
-					catch (Exception e)
-					{
-						throw new IOException("Exception in callback.", e);
-					}
-
-					PacketUserauthInfoResponse puir = new PacketUserauthInfoResponse(responses);
-					tm.sendMessage(puir.getPayload());
-
-					continue;
-				}
-				throw new PacketTypeException(ar[0]);
-			}
-		}
-		catch (IOException e)
-		{
-			tm.close(e);
-			throw new IOException("Keyboard-interactive authentication failed.", e);
-		}
-	}
+                        return false;
+                    case Packets.SSH_MSG_USERAUTH_INFO_REQUEST:
+                        PacketUserauthInfoRequest pui = new PacketUserauthInfoRequest(ar, 0, ar.length);
+                        String[] responses;
+                        try {
+                            responses = cb.replyToChallenge(pui.getName(), pui.getInstruction(), pui.getNumPrompts(), pui
+                                    .getPrompt(), pui.getEcho());
+                        }
+                        catch(Exception e) {
+                            throw new IOException("Exception in callback.", e);
+                        }
+                        PacketUserauthInfoResponse puir = new PacketUserauthInfoResponse(responses);
+                        tm.sendMessage(puir.getPayload());
+                        continue;
+                }
+                throw new PacketTypeException(type);
+            }
+        }
+        catch(IOException e) {
+            tm.close(e);
+            throw new IOException("Keyboard-interactive authentication failed.", e);
+        }
+    }
 
     @Override
     public void handleFailure(final IOException failure) {
         connectionClosed = true;
     }
 
-	@Override
-    public void handleMessage(byte[] msg, int msglen) throws IOException
-    {
-        synchronized (packets)
-        {
+    @Override
+    public void handleMessage(byte[] msg, int msglen) throws IOException {
+        synchronized(packets) {
             byte[] tmp = new byte[msglen];
             System.arraycopy(msg, 0, tmp, 0, msglen);
             packets.add(tmp);
             packets.notifyAll();
-            if (packets.size() > 5)
-            {
-				connectionClosed = true;
-				throw new IOException("Error, peer is flooding us with authentication packets.");
-			}
-		}
-	}
+            if(packets.size() > 5) {
+                connectionClosed = true;
+                throw new IOException("Server is flooding us with authentication packets.");
+            }
+        }
+    }
 }
