@@ -10,17 +10,16 @@ import java.io.InputStream;
 /**
  * @version $Id:$
  */
-public class SFTPInputStream extends InputStream
-{
+public class SFTPInputStream extends InputStream {
 
-    private SFTPv3FileHandle handle;
+    private SFTPFileHandle handle;
 
     /**
      * Offset (in bytes) in the file to read
      */
     private long readOffset = 0;
 
-    public SFTPInputStream(SFTPv3FileHandle handle) {
+    public SFTPInputStream(SFTPFileHandle handle) {
         this.handle = handle;
     }
 
@@ -30,11 +29,10 @@ public class SFTPInputStream extends InputStream
      * <code>len</code> bytes, but a smaller number may be read, possibly
      * zero. The number of bytes actually read is returned as an integer.
      *
-     * @see SFTPv3Client#read(SFTPv3FileHandle,long,byte[],int,int)
+     * @see SFTPClient#read(SFTPFileHandle, long, byte[], int, int)
      */
     @Override
-    public int read(byte[] buffer, int offset, int len) throws IOException
-	{
+    public int read(byte[] buffer, int offset, int len) throws IOException {
         int read = handle.getClient().read(handle, readOffset, buffer, offset, len);
         if(read > 0) {
             readOffset += read;
@@ -53,7 +51,7 @@ public class SFTPInputStream extends InputStream
      * <p> A subclass must provide an implementation of this method.
      *
      * @return the next byte of data, or <code>-1</code> if the end of the
-     *         stream is reached.
+     * stream is reached.
      * @throws IOException if an I/O error occurs.
      */
     @Override

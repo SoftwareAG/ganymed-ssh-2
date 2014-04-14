@@ -10,17 +10,16 @@ import java.io.OutputStream;
 /**
  * @version $Id:$
  */
-public class SFTPOutputStream extends OutputStream
-{
+public class SFTPOutputStream extends OutputStream {
 
-    private SFTPv3FileHandle handle;
+    private SFTPFileHandle handle;
 
     /**
      * Offset (in bytes) in the file to write
      */
     private long writeOffset = 0;
 
-    public SFTPOutputStream(SFTPv3FileHandle handle) {
+    public SFTPOutputStream(SFTPFileHandle handle) {
         this.handle = handle;
     }
 
@@ -33,11 +32,10 @@ public class SFTPOutputStream extends OutputStream
      * byte written and <code>b[off+len-1]</code> is the last byte written
      * by this operation.
      *
-     * @see SFTPv3Client#write(SFTPv3FileHandle,long,byte[],int,int)
+     * @see SFTPClient#write(SFTPFileHandle, long, byte[], int, int)
      */
     @Override
-    public void write(byte[] buffer, int offset, int len) throws IOException
-	{
+    public void write(byte[] buffer, int offset, int len) throws IOException {
         // We can just blindly write the whole buffer at once.
         // if <code>len</code> &gt; 32768, then the write operation will
         // be split into multiple writes in SFTPv3Client#write.
