@@ -15,6 +15,7 @@ import java.net.SocketTimeoutException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import ch.ethz.ssh2.auth.AgentProxy;
 import ch.ethz.ssh2.auth.AuthenticationManager;
@@ -970,7 +971,8 @@ public class Connection {
             cm = new ChannelManager(tm);
         }
 
-        return am.getRemainingMethods(user);
+        final Set<String> remainingMethods = am.getRemainingMethods(user);
+        return remainingMethods.toArray(new String[remainingMethods.size()]);
     }
 
     /**
