@@ -124,7 +124,7 @@ public class KnownHosts
 		}
 		else
 		{
-			throw new IOException("Unknwon host key type (" + serverHostKeyAlgorithm + ")");
+			throw new IOException(String.format("Unknown host key type %s", serverHostKeyAlgorithm));
 		}
 	}
 
@@ -170,7 +170,7 @@ public class KnownHosts
 		String base64_salt = new String(Base64.encode(salt));
 		String base64_hash = new String(Base64.encode(hash));
 
-		return new String("|1|" + base64_salt + "|" + base64_hash);
+		return String.format("|1|%s|%s", base64_salt, base64_hash);
 	}
 
 	private static byte[] hmacSha1Hash(byte[] salt, String hostname)
@@ -210,8 +210,8 @@ public class KnownHosts
 		String salt_base64 = entry.substring(3, delim_idx);
 		String hash_base64 = entry.substring(delim_idx + 1);
 
-		byte[] salt = null;
-		byte[] hash = null;
+		byte[] salt;
+		byte[] hash;
 
 		try
 		{
@@ -310,7 +310,7 @@ public class KnownHosts
 			return algos;
 		}
 
-		InetAddress[] ipAdresses = null;
+		InetAddress[] ipAdresses;
 
 		try
 		{
@@ -337,7 +337,7 @@ public class KnownHosts
 	private boolean hostnameMatches(String[] hostpatterns, String hostname)
 	{
 		boolean isMatch = false;
-		boolean negate = false;
+		boolean negate;
 
 		hostname = hostname.toLowerCase();
 
@@ -348,7 +348,7 @@ public class KnownHosts
 				continue;
 			}
 
-			String pattern = null;
+			String pattern;
 
 			/* In contrast to OpenSSH we also allow negated hash entries (as well as hashed
 							* entries in lines with multiple entries).
@@ -608,7 +608,7 @@ public class KnownHosts
 
 		for (Object key : keys)
 		{
-			String thisAlgo = null;
+			String thisAlgo;
 
 			if (key instanceof RSAPublicKey)
 			{
@@ -683,7 +683,7 @@ public class KnownHosts
 	 */
 	public int verifyHostkey(String hostname, String serverHostKeyAlgorithm, byte[] serverHostKey) throws IOException
 	{
-		Object remoteKey = null;
+		Object remoteKey;
 
 		if ("ssh-rsa".equals(serverHostKeyAlgorithm))
 		{
@@ -705,7 +705,7 @@ public class KnownHosts
 			return result;
 		}
 
-		InetAddress[] ipAdresses = null;
+		InetAddress[] ipAdresses;
 
 		try
 		{
@@ -805,7 +805,7 @@ public class KnownHosts
 	 */
 	static private byte[] rawFingerPrint(String type, String keyType, byte[] hostkey)
 	{
-		Digest dig = null;
+		Digest dig;
 
 		if ("md5".equals(type))
 		{
