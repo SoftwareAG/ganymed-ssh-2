@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 
 import ch.ethz.ssh2.ChannelCondition;
+import ch.ethz.ssh2.PacketFormatException;
+import ch.ethz.ssh2.PacketTypeException;
 import ch.ethz.ssh2.PtySettings;
 import ch.ethz.ssh2.ServerConnectionCallback;
 import ch.ethz.ssh2.ServerSessionCallback;
@@ -781,7 +783,7 @@ public class ChannelManager implements MessageHandler
 	public void msgChannelExtendedData(byte[] msg, int msglen) throws IOException
 	{
 		if (msglen <= 13)
-			throw new IOException("SSH_MSG_CHANNEL_EXTENDED_DATA message has wrong size (" + msglen + ")");
+			throw new PacketFormatException("SSH_MSG_CHANNEL_EXTENDED_DATA message has wrong size (" + msglen + ")");
 
 		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
 		int dataType = ((msg[5] & 0xff) << 24) | ((msg[6] & 0xff) << 16) | ((msg[7] & 0xff) << 8) | (msg[8] & 0xff);
@@ -790,13 +792,13 @@ public class ChannelManager implements MessageHandler
 		Channel c = getChannel(id);
 
 		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_EXTENDED_DATA message for non-existent channel " + id);
+			throw new PacketTypeException("Unexpected SSH_MSG_CHANNEL_EXTENDED_DATA message for non-existent channel " + id);
 
 		if (dataType != Packets.SSH_EXTENDED_DATA_STDERR)
-			throw new IOException("SSH_MSG_CHANNEL_EXTENDED_DATA message has unknown type (" + dataType + ")");
+			throw new PacketFormatException("SSH_MSG_CHANNEL_EXTENDED_DATA message has unknown type (" + dataType + ")");
 
 		if (len != (msglen - 13))
-			throw new IOException("SSH_MSG_CHANNEL_EXTENDED_DATA message has wrong len (calculated " + (msglen - 13)
+			throw new PacketFormatException("SSH_MSG_CHANNEL_EXTENDED_DATA message has wrong len (calculated " + (msglen - 13)
 					+ ", got " + len + ")");
 
 		log.debug("Got SSH_MSG_CHANNEL_EXTENDED_DATA (channel " + id + ", " + len + ")");
@@ -807,11 +809,11 @@ public class ChannelManager implements MessageHandler
 				return; // ignore
 
 			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Got SSH_MSG_CHANNEL_EXTENDED_DATA, but channel is not in correct state ("
+				throw new PacketTypeException("Got SSH_MSG_CHANNEL_EXTENDED_DATA, but channel is not in correct state ("
 						+ c.state + ")");
 
 			if (c.localWindow < len)
-				throw new IOException("Remote sent too much data, does not fit into window.");
+				throw new PacketFormatException("Remote sent too much data, does not fit into window.");
 
 			c.localWindow -= len;
 
@@ -1036,7 +1038,7 @@ public class ChannelManager implements MessageHandler
 	public void msgChannelData(byte[] msg, int msglen) throws IOException
 	{
 		if (msglen <= 9)
-			throw new IOException("SSH_MSG_CHANNEL_DATA message has wrong size (" + msglen + ")");
+			throw new PacketFormatException("SSH_MSG_CHANNEL_DATA message has wrong size (" + msglen + ")");
 
 		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
 		int len = ((msg[5] & 0xff) << 24) | ((msg[6] & 0xff) << 16) | ((msg[7] & 0xff) << 8) | (msg[8] & 0xff);
@@ -1044,10 +1046,10 @@ public class ChannelManager implements MessageHandler
 		Channel c = getChannel(id);
 
 		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_DATA message for non-existent channel " + id);
+			throw new PacketTypeException("Unexpected SSH_MSG_CHANNEL_DATA message for non-existent channel " + id);
 
 		if (len != (msglen - 9))
-			throw new IOException("SSH_MSG_CHANNEL_DATA message has wrong len (calculated " + (msglen - 9) + ", got "
+			throw new PacketFormatException("SSH_MSG_CHANNEL_DATA message has wrong len (calculated " + (msglen - 9) + ", got "
 					+ len + ")");
 
 		log.debug("Got SSH_MSG_CHANNEL_DATA (channel " + id + ", " + len + ")");
@@ -1058,7 +1060,7 @@ public class ChannelManager implements MessageHandler
 				return; // ignore
 
 			if (c.state != Channel.STATE_OPEN)
-				throw new IOException("Got SSH_MSG_CHANNEL_DATA, but channel is not in correct state (" + c.state + ")");
+				throw new PacketTypeException("Got SSH_MSG_CHANNEL_DATA, but channel is not in correct state (" + c.state + ")");
 
 			if (c.localWindow < len)
 				throw new IOException("Remote sent too much data, does not fit into window.");
@@ -1075,7 +1077,7 @@ public class ChannelManager implements MessageHandler
 	public void msgChannelWindowAdjust(byte[] msg, int msglen) throws IOException
 	{
 		if (msglen != 9)
-			throw new IOException("SSH_MSG_CHANNEL_WINDOW_ADJUST message has wrong size (" + msglen + ")");
+			throw new PacketFormatException("SSH_MSG_CHANNEL_WINDOW_ADJUST message has wrong size (" + msglen + ")");
 
 		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
 		int windowChange = ((msg[5] & 0xff) << 24) | ((msg[6] & 0xff) << 16) | ((msg[7] & 0xff) << 8) | (msg[8] & 0xff);
@@ -1083,7 +1085,7 @@ public class ChannelManager implements MessageHandler
 		Channel c = getChannel(id);
 
 		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_WINDOW_ADJUST message for non-existent channel " + id);
+			throw new PacketTypeException("Unexpected SSH_MSG_CHANNEL_WINDOW_ADJUST message for non-existent channel " + id);
 
 		synchronized (c)
 		{
@@ -1459,14 +1461,14 @@ public class ChannelManager implements MessageHandler
 	public void msgChannelEOF(byte[] msg, int msglen) throws IOException
 	{
 		if (msglen != 5)
-			throw new IOException("SSH_MSG_CHANNEL_EOF message has wrong size (" + msglen + ")");
+			throw new PacketFormatException("SSH_MSG_CHANNEL_EOF message has wrong size (" + msglen + ")");
 
 		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
 
 		Channel c = getChannel(id);
 
 		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_EOF message for non-existent channel " + id);
+			throw new PacketTypeException("Unexpected SSH_MSG_CHANNEL_EOF message for non-existent channel " + id);
 
 		synchronized (c)
 		{
@@ -1480,7 +1482,7 @@ public class ChannelManager implements MessageHandler
 	public void msgChannelClose(byte[] msg, int msglen) throws IOException
 	{
 		if (msglen != 5)
-			throw new IOException("SSH_MSG_CHANNEL_CLOSE message has wrong size (" + msglen + ")");
+			throw new PacketFormatException("SSH_MSG_CHANNEL_CLOSE message has wrong size (" + msglen + ")");
 
 		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
 
@@ -1507,14 +1509,14 @@ public class ChannelManager implements MessageHandler
 	public void msgChannelSuccess(byte[] msg, int msglen) throws IOException
 	{
 		if (msglen != 5)
-			throw new IOException("SSH_MSG_CHANNEL_SUCCESS message has wrong size (" + msglen + ")");
+			throw new PacketFormatException("SSH_MSG_CHANNEL_SUCCESS message has wrong size (" + msglen + ")");
 
 		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
 
 		Channel c = getChannel(id);
 
 		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_SUCCESS message for non-existent channel " + id);
+			throw new PacketTypeException("Unexpected SSH_MSG_CHANNEL_SUCCESS message for non-existent channel " + id);
 
 		synchronized (c)
 		{
@@ -1528,14 +1530,14 @@ public class ChannelManager implements MessageHandler
 	public void msgChannelFailure(byte[] msg, int msglen) throws IOException
 	{
 		if (msglen != 5)
-			throw new IOException("SSH_MSG_CHANNEL_FAILURE message has wrong size (" + msglen + ")");
+			throw new PacketFormatException("SSH_MSG_CHANNEL_FAILURE message has wrong size (" + msglen + ")");
 
 		int id = ((msg[1] & 0xff) << 24) | ((msg[2] & 0xff) << 16) | ((msg[3] & 0xff) << 8) | (msg[4] & 0xff);
 
 		Channel c = getChannel(id);
 
 		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_FAILURE message for non-existent channel " + id);
+			throw new PacketTypeException("Unexpected SSH_MSG_CHANNEL_FAILURE message for non-existent channel " + id);
 
 		synchronized (c)
 		{
@@ -1553,13 +1555,13 @@ public class ChannelManager implements MessageHandler
 		Channel c = getChannel(sm.recipientChannelID);
 
 		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_OPEN_CONFIRMATION message for non-existent channel "
+			throw new PacketTypeException("Unexpected SSH_MSG_CHANNEL_OPEN_CONFIRMATION message for non-existent channel "
 					+ sm.recipientChannelID);
 
 		synchronized (c)
 		{
 			if (c.state != Channel.STATE_OPENING)
-				throw new IOException("Unexpected SSH_MSG_CHANNEL_OPEN_CONFIRMATION message for channel "
+				throw new PacketTypeException("Unexpected SSH_MSG_CHANNEL_OPEN_CONFIRMATION message for channel "
 						+ sm.recipientChannelID);
 
 			c.remoteID = sm.senderChannelID;
@@ -1576,7 +1578,7 @@ public class ChannelManager implements MessageHandler
 	public void msgChannelOpenFailure(byte[] msg, int msglen) throws IOException
 	{
 		if (msglen < 5)
-			throw new IOException("SSH_MSG_CHANNEL_OPEN_FAILURE message has wrong size (" + msglen + ")");
+			throw new PacketFormatException("SSH_MSG_CHANNEL_OPEN_FAILURE message has wrong size (" + msglen + ")");
 
 		TypesReader tr = new TypesReader(msg, 0, msglen);
 
@@ -1586,7 +1588,7 @@ public class ChannelManager implements MessageHandler
 		Channel c = getChannel(id);
 
 		if (c == null)
-			throw new IOException("Unexpected SSH_MSG_CHANNEL_OPEN_FAILURE message for non-existent channel " + id);
+			throw new PacketTypeException("Unexpected SSH_MSG_CHANNEL_OPEN_FAILURE message for non-existent channel " + id);
 
 		int reasonCode = tr.readUINT32();
 		String description = tr.readString("UTF-8");
@@ -1760,7 +1762,7 @@ public class ChannelManager implements MessageHandler
 				msgGlobalFailure();
 				break;
 			default:
-				throw new IOException("Cannot handle unknown channel message " + (msg[0] & 0xff));
+				throw new PacketTypeException(msg[0]);
 		}
 	}
 }
