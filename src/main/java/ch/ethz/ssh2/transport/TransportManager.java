@@ -244,7 +244,7 @@ public abstract class TransportManager {
                 }
                 catch(IOException e) {
                     close(e);
-                    log.warning("Receive thread: error in receiveLoop: " + e.getMessage());
+                    log.warning(e.getMessage());
                     // Tell all handlers that it is time to say goodbye
                     if(km != null) {
                         km.handleFailure(e);
@@ -343,10 +343,6 @@ public abstract class TransportManager {
 
     public void changeSendCompression(Compressor comp) {
         tc.changeSendCompression(comp);
-    }
-
-    public void startCompression() {
-        tc.startCompression();
     }
 
     public void sendAsynchronousMessage(byte[] msg) throws IOException {
