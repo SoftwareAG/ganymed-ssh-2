@@ -24,7 +24,9 @@ import ch.ethz.ssh2.signature.RSASHA1Verify;
 import ch.ethz.ssh2.signature.RSASignature;
 
 public class ServerKexManager extends KexManager {
+
     private final ServerConnectionState state;
+
     private boolean authenticationStarted = false;
 
     public ServerKexManager(ServerConnectionState state) {
@@ -207,7 +209,6 @@ public class ServerKexManager extends KexManager {
                 return;
             }
         }
-
-        throw new IllegalStateException("Unkown KEX method! (" + kxs.np.kex_algo + ")");
+        throw new IllegalStateException(String.format("Unknown KEX method %s", kxs.np.kex_algo));
     }
 }

@@ -35,14 +35,16 @@ import ch.ethz.ssh2.signature.RSASHA1Verify;
 import ch.ethz.ssh2.signature.RSASignature;
 
 public class ClientKexManager extends KexManager {
-    ServerHostKeyVerifier verifier;
-    final String hostname;
-    final int port;
+
+    private final ServerHostKeyVerifier verifier;
+
+    private final String hostname;
+
+    private final int port;
 
     public ClientKexManager(TransportManager tm, ClientServerHello csh, CryptoWishList initialCwl, String hostname, int port,
                             ServerHostKeyVerifier keyVerifier, SecureRandom rnd) {
         super(tm, csh, initialCwl, rnd);
-
         this.hostname = hostname;
         this.port = port;
         this.verifier = keyVerifier;
@@ -78,7 +80,7 @@ public class ClientKexManager extends KexManager {
         }
     }
 
-	@Override
+    @Override
     public synchronized void handleMessage(byte[] msg, int msglen) throws IOException {
         PacketKexInit kip;
 
@@ -93,7 +95,7 @@ public class ClientKexManager extends KexManager {
 
         if(msg[0] == Packets.SSH_MSG_KEXINIT) {
             if((kxs != null) && (kxs.state != 0)) {
-				throw new PacketTypeException(msg[0]);
+                throw new PacketTypeException(msg[0]);
             }
 
             if(kxs == null) {
@@ -118,10 +120,7 @@ public class ClientKexManager extends KexManager {
             }
 
             if(kxs.remoteKEX.isFirst_kex_packet_follows() && (kxs.np.guessOK == false)) {
-				/*
-				 * Guess was wrong, we need to ignore the next kex packet.
-				 */
-
+                // Guess was wrong, we need to ignore the next kex packet.
                 ignore_next_kex_packet = true;
             }
 
@@ -226,17 +225,14 @@ public class ClientKexManager extends KexManager {
                 kxs.remote_hostkey = dhgexrpl.getHostKey();
 
                 if(verifier != null) {
-                    boolean vres;
                     try {
-                        vres = verifier.verifyServerHostKey(hostname, port, kxs.np.server_host_key_algo, kxs.remote_hostkey);
+                        if(!verifier.verifyServerHostKey(hostname, port, kxs.np.server_host_key_algo, kxs.remote_hostkey)) {
+                            throw new IOException("The server host key was not accepted by the verifier callback");
+                        }
                     }
                     catch(Exception e) {
                         throw new IOException(
-                                "The server hostkey was not accepted by the verifier callback.", e);
-                    }
-
-                    if(vres == false) {
-                        throw new IOException("The server hostkey was not accepted by the verifier callback");
+                                "The server host key was not accepted by the verifier callback.", e);
                     }
                 }
 
@@ -250,15 +246,10 @@ public class ClientKexManager extends KexManager {
                 catch(IllegalArgumentException e) {
                     throw new IOException("KEX error.", e);
                 }
-
-                boolean res = verifySignature(dhgexrpl.getSignature(), kxs.remote_hostkey);
-
-                if(res == false) {
-                    throw new IOException("Hostkey signature sent by remote is wrong!");
+                if(!verifySignature(dhgexrpl.getSignature(), kxs.remote_hostkey)) {
+                    throw new IOException("Invalid remote host key signature");
                 }
-
                 kxs.K = kxs.dhgx.getK();
-
                 finishKex(true);
                 kxs.state = -1;
                 return;
@@ -276,23 +267,16 @@ public class ClientKexManager extends KexManager {
                 kxs.remote_hostkey = dhr.getHostKey();
 
                 if(verifier != null) {
-                    boolean vres = false;
-
                     try {
-                        vres = verifier.verifyServerHostKey(hostname, port, kxs.np.server_host_key_algo, kxs.remote_hostkey);
+                        if(!verifier.verifyServerHostKey(hostname, port, kxs.np.server_host_key_algo, kxs.remote_hostkey)) {
+                            throw new IOException("The server host key was not accepted by the verifier callback");
+                        }
                     }
                     catch(Exception e) {
-                        throw new IOException(
-                                "The server hostkey was not accepted by the verifier callback.", e);
-                    }
-
-                    if(vres == false) {
-                        throw new IOException("The server hostkey was not accepted by the verifier callback");
+                        throw new IOException("The server host key was not accepted by the verifier callback", e);
                     }
                 }
-
                 kxs.dhx.setF(dhr.getF());
-
                 try {
                     kxs.H = kxs.dhx.calculateH(csh.getClientString(), csh.getServerString(), kxs.localKEX.getPayload(),
                             kxs.remoteKEX.getPayload(), dhr.getHostKey());
@@ -300,21 +284,15 @@ public class ClientKexManager extends KexManager {
                 catch(IllegalArgumentException e) {
                     throw new IOException("KEX error.", e);
                 }
-
-                boolean res = verifySignature(dhr.getSignature(), kxs.remote_hostkey);
-
-                if(res == false) {
-                    throw new IOException("Hostkey signature sent by remote is wrong!");
+                if(!verifySignature(dhr.getSignature(), kxs.remote_hostkey)) {
+                    throw new IOException("Invalid remote host key signature");
                 }
-
                 kxs.K = kxs.dhx.getK();
-
                 finishKex(true);
                 kxs.state = -1;
                 return;
             }
         }
-
-        throw new IllegalStateException("Unkown KEX method! (" + kxs.np.kex_algo + ")");
+        throw new IllegalStateException(String.format("Unknown KEX method %s", kxs.np.kex_algo));
     }
 }
