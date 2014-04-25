@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.SecureRandom;
 
+import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.compression.Compressor;
 import ch.ethz.ssh2.crypto.cipher.BlockCipher;
 import ch.ethz.ssh2.crypto.cipher.CipherInputStream;
@@ -238,13 +239,13 @@ public class TransportConnection {
         int padding_length = recv_packet_header_buffer[4] & 0xff;
 
         if(packet_length > TransportManager.MAX_PACKET_SIZE || packet_length < 12) {
-            throw new IOException("Illegal packet size! (" + packet_length + ")");
+            throw new PacketFormatException(String.format("Illegal packet size (%d)", packet_length));
         }
 
         int payload_length = packet_length - padding_length - 1;
 
         if(payload_length < 0) {
-            throw new IOException("Illegal padding_length in packet from remote (" + padding_length + ")");
+            throw new PacketFormatException(String.format("Illegal padding_length in packet from remote (%d)", padding_length));
         }
 
         return payload_length;
@@ -265,13 +266,13 @@ public class TransportConnection {
         int padding_length = recv_packet_header_buffer[4] & 0xff;
 
         if(packet_length > TransportManager.MAX_PACKET_SIZE || packet_length < 12) {
-            throw new IOException("Illegal packet size! (" + packet_length + ")");
+			throw new PacketFormatException(String.format("Illegal packet size (%d)", packet_length));
         }
 
         int payload_length = packet_length - padding_length - 1;
 
         if(payload_length < 0) {
-            throw new IOException("Illegal padding_length in packet from remote (" + padding_length + ")");
+            throw new PacketFormatException(String.format("Illegal padding_length in packet from remote (%d)", padding_length));
         }
 
         if(payload_length >= len) {
