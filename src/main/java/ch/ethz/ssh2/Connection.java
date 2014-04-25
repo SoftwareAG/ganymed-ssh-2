@@ -706,7 +706,7 @@ public class Connection {
         }
 
         if(tm != null) {
-            throw new IOException("Connection to " + hostname + " is already in connected state!");
+            throw new IllegalStateException(String.format("Connection to %s is already in connected state", hostname));
         }
 
         if(connectTimeout < 0) {
@@ -734,6 +734,7 @@ public class Connection {
 
             if(kexTimeout > 0) {
                 final Runnable timeoutHandler = new Runnable() {
+					@Override
                     public void run() {
                         synchronized(state) {
                             if(state.isCancelled) {
