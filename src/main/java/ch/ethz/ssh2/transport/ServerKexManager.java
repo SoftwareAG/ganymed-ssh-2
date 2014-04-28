@@ -5,6 +5,7 @@
 package ch.ethz.ssh2.transport;
 
 import java.io.IOException;
+import java.security.DigestException;
 
 import ch.ethz.ssh2.ConnectionInfo;
 import ch.ethz.ssh2.PacketTypeException;
@@ -45,7 +46,7 @@ public class ServerKexManager extends KexManager {
         }
     }
 
-	@Override
+    @Override
     public void handleMessage(byte[] msg, int msglen) throws IOException {
         PacketKexInit kip;
 
@@ -60,12 +61,12 @@ public class ServerKexManager extends KexManager {
 
         if(msg[0] == Packets.SSH_MSG_KEXINIT) {
             if((kxs != null) && (kxs.state != 0)) {
-				throw new PacketTypeException(msg[0]);
+                throw new PacketTypeException(msg[0]);
             }
 
             if(kxs == null) {
                 /*
-				 * Ah, OK, peer wants to do KEX. Let's be nice and play
+                 * Ah, OK, peer wants to do KEX. Let's be nice and play
 				 * together.
 				 */
                 kxs = new KexState();
@@ -83,10 +84,7 @@ public class ServerKexManager extends KexManager {
             kxs.np = mergeKexParameters(kxs.remoteKEX.getKexParameters(), kxs.localKEX.getKexParameters());
 
             if(kxs.remoteKEX.isFirst_kex_packet_follows() && (kxs.np.guessOK == false)) {
-				/*
-				 * Guess was wrong, we need to ignore the next kex packet.
-				 */
-
+                // Guess was wrong, we need to ignore the next kex packet.
                 ignore_next_kex_packet = true;
             }
 
@@ -120,11 +118,16 @@ public class ServerKexManager extends KexManager {
                 cbc = BlockCipherFactory.createCipher(kxs.np.enc_algo_client_to_server, false,
                         km.enc_key_client_to_server, km.initial_iv_client_to_server);
 
-                mac = new MAC(kxs.np.mac_algo_client_to_server, km.integrity_key_client_to_server);
+                try {
+                    mac = new MAC(kxs.np.mac_algo_client_to_server, km.integrity_key_client_to_server);
+                }
+                catch(DigestException e) {
+                    throw new IOException(e);
+                }
 
             }
-            catch(IllegalArgumentException e1) {
-                throw new IOException("Fatal error during MAC startup!");
+            catch(IllegalArgumentException e) {
+                throw new IOException(e);
             }
 
             tm.changeRecvCipher(cbc, mac);

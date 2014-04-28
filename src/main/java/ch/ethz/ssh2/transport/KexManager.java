@@ -6,6 +6,7 @@ package ch.ethz.ssh2.transport;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.security.DigestException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
@@ -233,8 +234,13 @@ public abstract class KexManager implements MessageHandler {
                     : km.enc_key_server_to_client, clientMode ? km.initial_iv_client_to_server
                     : km.initial_iv_server_to_client);
 
-            mac = new MAC(clientMode ? kxs.np.mac_algo_client_to_server : kxs.np.mac_algo_server_to_client, clientMode
-                    ? km.integrity_key_client_to_server : km.integrity_key_server_to_client);
+            try {
+                mac = new MAC(clientMode ? kxs.np.mac_algo_client_to_server : kxs.np.mac_algo_server_to_client, clientMode
+                        ? km.integrity_key_client_to_server : km.integrity_key_server_to_client);
+            }
+            catch(DigestException e) {
+                throw new IOException(e);
+            }
 
             comp = CompressionFactory.createCompressor(kxs.np.comp_algo_client_to_server);
         }

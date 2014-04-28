@@ -4,6 +4,8 @@
  */
 package ch.ethz.ssh2.crypto.digest;
 
+import java.security.DigestException;
+
 /**
  * HMAC.
  * 
@@ -20,8 +22,7 @@ public final class HMAC implements Digest
 
 	int size;
 
-	public HMAC(Digest md, byte[] key, int size)
-	{
+	public HMAC(Digest md, byte[] key, int size) throws DigestException {
 		this.md = md;
 		this.size = size;
 
@@ -77,13 +78,11 @@ public final class HMAC implements Digest
 		md.update(k_xor_ipad);
 	}
 
-	public final void digest(byte[] out)
-	{
+	public final void digest(byte[] out) throws DigestException {
 		digest(out, 0);
 	}
 
-	public final void digest(byte[] out, int off)
-	{
+	public final void digest(byte[] out, int off) throws DigestException {
 		md.digest(tmp);
 
 		md.update(k_xor_opad);

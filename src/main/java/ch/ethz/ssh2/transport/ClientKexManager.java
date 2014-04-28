@@ -5,6 +5,7 @@
 package ch.ethz.ssh2.transport;
 
 import java.io.IOException;
+import java.security.DigestException;
 import java.security.SecureRandom;
 
 import ch.ethz.ssh2.ConnectionInfo;
@@ -170,12 +171,17 @@ public class ClientKexManager extends KexManager {
                 cbc = BlockCipherFactory.createCipher(kxs.np.enc_algo_server_to_client, false,
                         km.enc_key_server_to_client, km.initial_iv_server_to_client);
 
-                mac = new MAC(kxs.np.mac_algo_server_to_client, km.integrity_key_server_to_client);
+                try {
+                    mac = new MAC(kxs.np.mac_algo_server_to_client, km.integrity_key_server_to_client);
+                }
+                catch(DigestException e) {
+                    throw new IOException(e);
+                }
 
                 comp = CompressionFactory.createCompressor(kxs.np.comp_algo_server_to_client);
             }
-            catch(IllegalArgumentException e1) {
-                throw new IOException("Fatal error during MAC startup!");
+            catch(IllegalArgumentException e) {
+                throw new IOException(e.getMessage());
             }
 
             tm.changeRecvCipher(cbc, mac);
