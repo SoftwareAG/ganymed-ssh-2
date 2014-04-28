@@ -5,41 +5,25 @@
 package ch.ethz.ssh2.packets;
 
 /**
- * PacketUserauthRequestInteractive.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketUserauthRequestInteractive
-{
-	byte[] payload;
+public class PacketUserauthRequestInteractive {
+    private final byte[] payload;
 
-	String userName;
-	String serviceName;
-	String[] submethods;
+    public PacketUserauthRequestInteractive(String serviceName, String user, String[] submethods) {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_USERAUTH_REQUEST);
+        tw.writeString(user);
+        tw.writeString(serviceName);
+        tw.writeString("keyboard-interactive");
+        tw.writeString(""); // draft-ietf-secsh-newmodes-04.txt says that
+        // the language tag should be empty.
+        tw.writeNameList(null == submethods ? new String[]{} : submethods);
+        payload = tw.getBytes();
+    }
 
-	public PacketUserauthRequestInteractive(String serviceName, String user, String[] submethods)
-	{
-		this.serviceName = serviceName;
-		this.userName = user;
-		this.submethods = submethods;
-	}
-
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_USERAUTH_REQUEST);
-			tw.writeString(userName);
-			tw.writeString(serviceName);
-			tw.writeString("keyboard-interactive");
-			tw.writeString(""); // draft-ietf-secsh-newmodes-04.txt says that
-			// the language tag should be empty.
-			tw.writeNameList(submethods);
-
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+    public byte[] getPayload() {
+        return payload;
+    }
 }
