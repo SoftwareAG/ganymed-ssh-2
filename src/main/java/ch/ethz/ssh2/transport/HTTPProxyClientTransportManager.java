@@ -2,6 +2,8 @@ package ch.ethz.ssh2.transport;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.LineNumberReader;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -70,14 +72,12 @@ public class HTTPProxyClientTransportManager extends ClientTransportManager {
 
         // Parse the HTTP response
 
-        byte[] buffer = new byte[1024];
         InputStream in = sock.getInputStream();
 
-        int len = ClientServerHello.readLineRN(in, buffer);
+        final LineNumberReader reader = new LineNumberReader(new InputStreamReader(in));
+        String httpReponse = reader.readLine();
 
-        String httpReponse = StringEncoder.GetString(buffer, 0, len);
-
-        if(httpReponse.startsWith("HTTP/") == false) {
+        if(!httpReponse.startsWith("HTTP/")) {
             throw new IOException("The proxy did not send back a valid HTTP response.");
         }
 
@@ -104,12 +104,8 @@ public class HTTPProxyClientTransportManager extends ClientTransportManager {
             throw new HTTPProxyException(httpReponse.substring(13), errorCode);
         }
 
-        // Read until empty line
-        while(true) {
-            len = ClientServerHello.readLineRN(in, buffer);
-            if(len == 0) {
-                break;
-            }
+        while(reader.readLine() != null) {
+            // Read until empty line
         }
     }
 }
