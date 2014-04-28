@@ -8,6 +8,7 @@ import java.io.BufferedReader;
 import java.io.CharArrayReader;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.security.DigestException;
 
 import ch.ethz.ssh2.crypto.cipher.AES;
 import ch.ethz.ssh2.crypto.cipher.BlockCipher;
@@ -90,9 +91,14 @@ public class PEMDecoder
 
 			int copy = (keyLen < tmp.length) ? keyLen : tmp.length;
 
-			md5.digest(tmp, 0);
+            try {
+                md5.digest(tmp, 0);
+            }
+            catch(DigestException e) {
+                throw new IOException(e);
+            }
 
-			System.arraycopy(tmp, 0, key, key.length - keyLen, copy);
+            System.arraycopy(tmp, 0, key, key.length - keyLen, copy);
 
 			keyLen -= copy;
 
