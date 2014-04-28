@@ -23,6 +23,9 @@ import ch.ethz.ssh2.signature.DSASignature;
 import ch.ethz.ssh2.signature.RSASHA1Verify;
 import ch.ethz.ssh2.signature.RSASignature;
 
+/**
+ * @version $Id: $
+ */
 public class ServerKexManager extends KexManager {
 
     private final ServerConnectionState state;
@@ -78,10 +81,6 @@ public class ServerKexManager extends KexManager {
             kxs.remoteKEX = kip;
 
             kxs.np = mergeKexParameters(kxs.remoteKEX.getKexParameters(), kxs.localKEX.getKexParameters());
-
-            if(kxs.np == null) {
-                throw new IOException("Cannot negotiate, proposals do not match.");
-            }
 
             if(kxs.remoteKEX.isFirst_kex_packet_follows() && (kxs.np.guessOK == false)) {
 				/*

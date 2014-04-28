@@ -4,13 +4,19 @@
  */
 package ch.ethz.ssh2.transport;
 
+import java.io.IOException;
+
 /**
- * NegotiateException.
- * 
- * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class NegotiateException extends Exception
-{
-	private static final long serialVersionUID = 3689910669428143157L;
+public class NegotiateException extends IOException {
+    private static final long serialVersionUID = 3689910669428143157L;
+
+    public NegotiateException() {
+        //
+    }
+
+    public NegotiateException(String message) {
+        super(message);
+    }
 }

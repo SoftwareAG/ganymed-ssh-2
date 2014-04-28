@@ -7,6 +7,7 @@ package ch.ethz.ssh2.transport;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.security.SecureRandom;
+import java.util.Arrays;
 
 import ch.ethz.ssh2.ConnectionInfo;
 import ch.ethz.ssh2.DHGexParameters;
@@ -24,9 +25,6 @@ import ch.ethz.ssh2.signature.DSAPrivateKey;
 import ch.ethz.ssh2.signature.RSAPrivateKey;
 
 /**
- * KexManager.
- *
- * @author Christian Plattner
  * @version $Id$
  */
 public abstract class KexManager implements MessageHandler {
@@ -85,10 +83,6 @@ public abstract class KexManager implements MessageHandler {
         if(client == null || server == null) {
             throw new IllegalArgumentException();
         }
-
-        if(client.length == 0) {
-            return null;
-        }
         for(String c : client) {
             for(String s : server) {
                 if(c.equals(s)) {
@@ -96,22 +90,19 @@ public abstract class KexManager implements MessageHandler {
                 }
             }
         }
-        throw new NegotiateException();
+        throw new NegotiateException(String.format("Negotiation failed for %s", Arrays.toString(server)));
     }
 
     private boolean compareFirstOfNameList(String[] a, String[] b) {
         if(a == null || b == null) {
             throw new IllegalArgumentException();
         }
-
         if((a.length == 0) && (b.length == 0)) {
             return true;
         }
-
         if((a.length == 0) || (b.length == 0)) {
             return false;
         }
-
         return (a[0].equals(b[0]));
     }
 
@@ -119,12 +110,10 @@ public abstract class KexManager implements MessageHandler {
         if(cpar == null || spar == null) {
             throw new IllegalArgumentException();
         }
-
-        if(compareFirstOfNameList(cpar.kex_algorithms, spar.kex_algorithms) == false) {
+        if(!compareFirstOfNameList(cpar.kex_algorithms, spar.kex_algorithms)) {
             return false;
         }
-
-        if(compareFirstOfNameList(cpar.server_host_key_algorithms, spar.server_host_key_algorithms) == false) {
+        if(!compareFirstOfNameList(cpar.server_host_key_algorithms, spar.server_host_key_algorithms)) {
             return false;
         }
 
@@ -137,68 +126,52 @@ public abstract class KexManager implements MessageHandler {
         return true;
     }
 
-    protected NegotiatedParameters mergeKexParameters(KexParameters client, KexParameters server) {
+    protected NegotiatedParameters mergeKexParameters(KexParameters client, KexParameters server)
+            throws NegotiateException {
         NegotiatedParameters np = new NegotiatedParameters();
 
-        try {
-            np.kex_algo = getFirstMatch(client.kex_algorithms, server.kex_algorithms);
+        np.kex_algo = getFirstMatch(client.kex_algorithms, server.kex_algorithms);
 
-            log.info("kex_algo=" + np.kex_algo);
+        log.info("kex_algo=" + np.kex_algo);
 
-            np.server_host_key_algo = getFirstMatch(client.server_host_key_algorithms,
-                    server.server_host_key_algorithms);
+        np.server_host_key_algo = getFirstMatch(client.server_host_key_algorithms,
+                server.server_host_key_algorithms);
 
-            log.info("server_host_key_algo=" + np.server_host_key_algo);
+        log.info("server_host_key_algo=" + np.server_host_key_algo);
 
-            np.enc_algo_client_to_server = getFirstMatch(client.encryption_algorithms_client_to_server,
-                    server.encryption_algorithms_client_to_server);
-            np.enc_algo_server_to_client = getFirstMatch(client.encryption_algorithms_server_to_client,
-                    server.encryption_algorithms_server_to_client);
+        np.enc_algo_client_to_server = getFirstMatch(client.encryption_algorithms_client_to_server,
+                server.encryption_algorithms_client_to_server);
+        np.enc_algo_server_to_client = getFirstMatch(client.encryption_algorithms_server_to_client,
+                server.encryption_algorithms_server_to_client);
 
-            log.info("enc_algo_client_to_server=" + np.enc_algo_client_to_server);
-            log.info("enc_algo_server_to_client=" + np.enc_algo_server_to_client);
+        log.info("enc_algo_client_to_server=" + np.enc_algo_client_to_server);
+        log.info("enc_algo_server_to_client=" + np.enc_algo_server_to_client);
 
-            np.mac_algo_client_to_server = getFirstMatch(client.mac_algorithms_client_to_server,
-                    server.mac_algorithms_client_to_server);
-            np.mac_algo_server_to_client = getFirstMatch(client.mac_algorithms_server_to_client,
-                    server.mac_algorithms_server_to_client);
+        np.mac_algo_client_to_server = getFirstMatch(client.mac_algorithms_client_to_server,
+                server.mac_algorithms_client_to_server);
+        np.mac_algo_server_to_client = getFirstMatch(client.mac_algorithms_server_to_client,
+                server.mac_algorithms_server_to_client);
 
-            log.info("mac_algo_client_to_server=" + np.mac_algo_client_to_server);
-            log.info("mac_algo_server_to_client=" + np.mac_algo_server_to_client);
+        log.info("mac_algo_client_to_server=" + np.mac_algo_client_to_server);
+        log.info("mac_algo_server_to_client=" + np.mac_algo_server_to_client);
 
-            np.comp_algo_client_to_server = getFirstMatch(client.compression_algorithms_client_to_server,
-                    server.compression_algorithms_client_to_server);
-            np.comp_algo_server_to_client = getFirstMatch(client.compression_algorithms_server_to_client,
-                    server.compression_algorithms_server_to_client);
+        np.comp_algo_client_to_server = getFirstMatch(client.compression_algorithms_client_to_server,
+                server.compression_algorithms_client_to_server);
+        np.comp_algo_server_to_client = getFirstMatch(client.compression_algorithms_server_to_client,
+                server.compression_algorithms_server_to_client);
 
-            log.info("comp_algo_client_to_server=" + np.comp_algo_client_to_server);
-            log.info("comp_algo_server_to_client=" + np.comp_algo_server_to_client);
+        log.info("comp_algo_client_to_server=" + np.comp_algo_client_to_server);
+        log.info("comp_algo_server_to_client=" + np.comp_algo_server_to_client);
 
-        }
-        catch(NegotiateException e) {
-            return null;
-        }
+        np.lang_client_to_server = getFirstMatch(client.languages_client_to_server,
+                server.languages_client_to_server);
 
-        try {
-            np.lang_client_to_server = getFirstMatch(client.languages_client_to_server,
-                    server.languages_client_to_server);
-        }
-        catch(NegotiateException e1) {
-            np.lang_client_to_server = null;
-        }
-
-        try {
-            np.lang_server_to_client = getFirstMatch(client.languages_server_to_client,
-                    server.languages_server_to_client);
-        }
-        catch(NegotiateException e2) {
-            np.lang_server_to_client = null;
-        }
+        np.lang_server_to_client = getFirstMatch(client.languages_server_to_client,
+                server.languages_server_to_client);
 
         if(isGuessOK(client, server)) {
             np.guessOK = true;
         }
-
         return np;
     }
 
@@ -219,7 +192,7 @@ public abstract class KexManager implements MessageHandler {
         }
     }
 
-    private boolean establishKeyMaterial() {
+    private boolean establishKeyMaterial() throws IOException {
         try {
             int mac_cs_key_len = MAC.getKeyLen(kxs.np.mac_algo_client_to_server);
             int enc_cs_key_len = BlockCipherFactory.getKeySize(kxs.np.enc_algo_client_to_server);
@@ -280,9 +253,13 @@ public abstract class KexManager implements MessageHandler {
 
     public static void checkServerHostkeyAlgorithmsList(String[] algos) {
         for(final String algo : algos) {
-            if(("ssh-rsa".equals(algo) == false) && ("ssh-dss".equals(algo) == false)) {
-                throw new IllegalArgumentException("Unknown server host key algorithm '" + algo + "'");
+            if("ssh-rsa".equals(algo)) {
+                continue;
             }
+            if("ssh-dss".equals(algo)) {
+                continue;
+            }
+            throw new IllegalArgumentException(String.format("Unknown server host key algorithm %s", algo));
         }
     }
 
@@ -300,17 +277,13 @@ public abstract class KexManager implements MessageHandler {
             if("diffie-hellman-group-exchange-sha1".equals(algo)) {
                 continue;
             }
-
             if("diffie-hellman-group14-sha1".equals(algo)) {
                 continue;
             }
-
             if("diffie-hellman-group1-sha1".equals(algo)) {
                 continue;
             }
-
-            throw new IllegalArgumentException("Unknown kex algorithm '" + algo + "'");
+            throw new IllegalArgumentException(String.format("Unknown kex algorithm %s", algo));
         }
     }
-
 }

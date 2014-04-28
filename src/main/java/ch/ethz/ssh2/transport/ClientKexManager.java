@@ -34,6 +34,9 @@ import ch.ethz.ssh2.signature.RSAPublicKey;
 import ch.ethz.ssh2.signature.RSASHA1Verify;
 import ch.ethz.ssh2.signature.RSASignature;
 
+/**
+ * @version $Id: $
+ */
 public class ClientKexManager extends KexManager {
 
     private final ServerHostKeyVerifier verifier;
@@ -114,10 +117,6 @@ public class ClientKexManager extends KexManager {
             kxs.remoteKEX = kip;
 
             kxs.np = mergeKexParameters(kxs.localKEX.getKexParameters(), kxs.remoteKEX.getKexParameters());
-
-            if(kxs.np == null) {
-                throw new IOException("Cannot negotiate, proposals do not match.");
-            }
 
             if(kxs.remoteKEX.isFirst_kex_packet_follows() && (kxs.np.guessOK == false)) {
                 // Guess was wrong, we need to ignore the next kex packet.
