@@ -14,7 +14,7 @@ import ch.ethz.ssh2.transport.KexParameters;
 
 /**
  * PacketKexInit.
- * 
+ *
  * @author Christian Plattner
  * @version 2.50, 03/15/10
  */
@@ -37,8 +37,8 @@ public class PacketKexInit
 		kp.mac_algorithms_server_to_client = cwl.s2c_mac_algos;
 		kp.compression_algorithms_client_to_server = cwl.c2s_comp_algos;
 		kp.compression_algorithms_server_to_client = cwl.s2c_comp_algos;
-		kp.languages_client_to_server = new String[] {};
-		kp.languages_server_to_client = new String[] {};
+		kp.languages_client_to_server = new String[] {""};
+		kp.languages_server_to_client = new String[] {""};
 		kp.first_kex_packet_follows = false;
 		kp.reserved_field1 = 0;
 	}
