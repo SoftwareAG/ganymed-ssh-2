@@ -35,7 +35,7 @@ import ch.ethz.ssh2.signature.RSASHA1Verify;
 import ch.ethz.ssh2.signature.RSASignature;
 
 /**
- * @version $Id: $
+ * @version $Id$
  */
 public class ClientKexManager extends KexManager {
 

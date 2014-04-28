@@ -7,7 +7,7 @@ package ch.ethz.ssh2.crypto;
 import java.io.IOException;
 
 /**
- * @version $Id: PEMDecryptException.java 5865 2010-03-27 03:28:11Z dkocher $
+ * @version $Id$
  */
 public class PEMDecryptException extends IOException
 {

@@ -5,7 +5,7 @@ import java.util.List;
 
 /**
  * @author Kenny Root
- * @version $Id:$
+ * @version $Id$
  */
 public class CompressionFactory {
     static class CompressorEntry {

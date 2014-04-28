@@ -3,7 +3,7 @@ package ch.ethz.ssh2;
 import java.io.IOException;
 
 /**
- * @version $Id:$
+ * @version $Id$
  */
 public class PacketFormatException extends IOException
 {
