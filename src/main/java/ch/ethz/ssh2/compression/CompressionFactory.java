@@ -22,9 +22,7 @@ public class CompressionFactory {
             = new ArrayList<CompressorEntry>();
 
     static {
-        /* Higher Priority First */
-        compressors.add(new CompressorEntry("zlib", "ch.ethz.ssh2.compression.ZlibCompressor"));
-        compressors.add(new CompressorEntry("zlib@openssh.com", "ch.ethz.ssh2.compression.ZlibCompressor"));
+        // Higher priority first
         compressors.add(new CompressorEntry("none", null));
     }
 
