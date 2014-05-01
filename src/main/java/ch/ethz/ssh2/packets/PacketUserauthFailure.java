@@ -14,25 +14,30 @@ import ch.ethz.ssh2.PacketTypeException;
 
 /**
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketUserauthFailure {
+public final class PacketUserauthFailure {
 
-    private byte[] payload;
+    private final byte[] payload;
 
     private Set<String> authThatCanContinue;
+
     private boolean partialSuccess;
 
     public PacketUserauthFailure(Set<String> authThatCanContinue, boolean partialSuccess) {
         this.authThatCanContinue = authThatCanContinue;
         this.partialSuccess = partialSuccess;
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_USERAUTH_FAILURE);
+        tw.writeNameList(authThatCanContinue.toArray(new String[authThatCanContinue.size()]));
+        tw.writeBoolean(partialSuccess);
+        payload = tw.getBytes();
     }
 
-    public PacketUserauthFailure(byte payload[], int off, int len) throws IOException {
-        this.payload = new byte[len];
-        System.arraycopy(payload, off, this.payload, 0, len);
+    public PacketUserauthFailure(byte payload[]) throws IOException {
+        this.payload = payload;
 
-        TypesReader tr = new TypesReader(payload, off, len);
+        TypesReader tr = new TypesReader(payload);
 
         int packet_type = tr.readByte();
 
@@ -48,13 +53,6 @@ public class PacketUserauthFailure {
     }
 
     public byte[] getPayload() {
-        if(payload == null) {
-            TypesWriter tw = new TypesWriter();
-            tw.writeByte(Packets.SSH_MSG_USERAUTH_FAILURE);
-            tw.writeNameList(authThatCanContinue.toArray(new String[authThatCanContinue.size()]));
-            tw.writeBoolean(partialSuccess);
-            payload = tw.getBytes();
-        }
         return payload;
     }
 

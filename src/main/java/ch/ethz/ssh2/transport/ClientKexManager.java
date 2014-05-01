@@ -85,7 +85,7 @@ public class ClientKexManager extends KexManager {
     }
 
     @Override
-    public synchronized void handleMessage(byte[] msg, int msglen) throws IOException {
+    public synchronized void handleMessage(byte[] msg) throws IOException {
         PacketKexInit kip;
 
         if((kxs == null) && (msg[0] != Packets.SSH_MSG_KEXINIT)) {
@@ -114,7 +114,7 @@ public class ClientKexManager extends KexManager {
                 tm.sendKexMessage(kip.getPayload());
             }
 
-            kip = new PacketKexInit(msg, 0, msglen);
+            kip = new PacketKexInit(msg);
             kxs.remoteKEX = kip;
 
             kxs.np = mergeKexParameters(kxs.localKEX.getKexParameters(), kxs.remoteKEX.getKexParameters());
@@ -215,7 +215,7 @@ public class ClientKexManager extends KexManager {
 
         if(kxs.np.kex_algo.equals("diffie-hellman-group-exchange-sha1")) {
             if(kxs.state == 1) {
-                PacketKexDhGexGroup dhgexgrp = new PacketKexDhGexGroup(msg, 0, msglen);
+                PacketKexDhGexGroup dhgexgrp = new PacketKexDhGexGroup(msg);
                 kxs.dhgx = new DhGroupExchange(dhgexgrp.getP(), dhgexgrp.getG());
                 kxs.dhgx.init(rnd);
                 PacketKexDhGexInit dhgexinit = new PacketKexDhGexInit(kxs.dhgx.getE());
@@ -225,7 +225,7 @@ public class ClientKexManager extends KexManager {
             }
 
             if(kxs.state == 2) {
-                PacketKexDhGexReply dhgexrpl = new PacketKexDhGexReply(msg, 0, msglen);
+                PacketKexDhGexReply dhgexrpl = new PacketKexDhGexReply(msg);
 
                 kxs.remote_hostkey = dhgexrpl.getHostKey();
 
@@ -267,7 +267,7 @@ public class ClientKexManager extends KexManager {
                 || kxs.np.kex_algo.equals("diffie-hellman-group14-sha1")) {
             if(kxs.state == 1) {
 
-                PacketKexDHReply dhr = new PacketKexDHReply(msg, 0, msglen);
+                PacketKexDHReply dhr = new PacketKexDHReply(msg);
 
                 kxs.remote_hostkey = dhr.getHostKey();
 

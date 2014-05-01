@@ -6,31 +6,20 @@
 package ch.ethz.ssh2.packets;
 
 /**
- * PacketChannelFailure.
- * 
  * @author Christian Plattner
- * @version 2.8
+ * @version $Id$
  */
-public class PacketChannelFailure
-{
-	byte[] payload;
+public final class PacketChannelFailure {
+    private final byte[] payload;
 
-	public int recipientChannelID;
+    public PacketChannelFailure(int recipientChannelID) {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_CHANNEL_FAILURE);
+        tw.writeUINT32(recipientChannelID);
+        payload = tw.getBytes();
+    }
 
-	public PacketChannelFailure(int recipientChannelID)
-	{
-		this.recipientChannelID = recipientChannelID;
-	}
-
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_CHANNEL_FAILURE);
-			tw.writeUINT32(recipientChannelID);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+    public byte[] getPayload() {
+        return payload;
+    }
 }

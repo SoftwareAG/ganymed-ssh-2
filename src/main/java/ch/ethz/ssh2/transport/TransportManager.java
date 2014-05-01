@@ -169,7 +169,7 @@ public abstract class TransportManager {
             if(!connectionClosed) {
                 try {
                     tc.sendMessage(new PacketDisconnect(
-                            DisconnectException.Reason.SSH_DISCONNECT_BY_APPLICATION.ordinal(), "", "").getPayload());
+                            PacketDisconnect.Reason.SSH_DISCONNECT_BY_APPLICATION, "").getPayload());
                 }
                 catch(IOException ignore) {
                     //
@@ -408,15 +408,17 @@ public abstract class TransportManager {
     }
 
     private void receiveLoop() throws IOException {
-        final byte[] msg = new byte[MAX_PACKET_SIZE];
         while(true) {
-            final int msglen = tc.receiveMessage(msg, 0, msg.length);
-            final int type = msg[0] & 0xff;
+            final byte[] buffer = new byte[MAX_PACKET_SIZE];
+            final int length = tc.receiveMessage(buffer, 0, buffer.length);
+            final byte[] packet = new byte[length];
+            System.arraycopy(buffer, 0, packet, 0, length);
+            final int type = packet[0] & 0xff;
             switch(type) {
                 case Packets.SSH_MSG_IGNORE:
                     break;
                 case Packets.SSH_MSG_DEBUG: {
-                    TypesReader tr = new TypesReader(msg, 0, msglen);
+                    TypesReader tr = new TypesReader(packet);
                     tr.readByte();
                     // always_display
                     tr.readBoolean();
@@ -429,11 +431,8 @@ public abstract class TransportManager {
                 case Packets.SSH_MSG_UNIMPLEMENTED:
                     throw new PacketTypeException(type);
                 case Packets.SSH_MSG_DISCONNECT: {
-                    TypesReader tr = new TypesReader(msg, 0, msglen);
-                    tr.readByte();
-                    int code = tr.readUINT32();
-                    String message = tr.readString();
-                    throw new DisconnectException(DisconnectException.Reason.values()[code], message);
+                    final PacketDisconnect disconnect = new PacketDisconnect(packet);
+                    throw new DisconnectException(disconnect.getReason(), disconnect.getMessage());
                 }
                 case Packets.SSH_MSG_KEXINIT:
                 case Packets.SSH_MSG_NEWKEYS:
@@ -443,7 +442,7 @@ public abstract class TransportManager {
                 case Packets.SSH_MSG_KEX_DH_GEX_INIT:
                 case Packets.SSH_MSG_KEX_DH_GEX_REPLY:
                     // Is it a KEX Packet
-                    km.handleMessage(msg, msglen);
+                    km.handleMessage(packet);
                     break;
                 case Packets.SSH_MSG_USERAUTH_SUCCESS:
                     tc.startCompression();
@@ -452,7 +451,7 @@ public abstract class TransportManager {
                     boolean handled = false;
                     for(HandlerEntry handler : messageHandlers) {
                         if((handler.low <= type) && (type <= handler.high)) {
-                            handler.mh.handleMessage(msg, msglen);
+                            handler.mh.handleMessage(packet);
                             handled = true;
                             break;
                         }

@@ -13,7 +13,7 @@ import ch.ethz.ssh2.PacketTypeException;
  * @author Christian Plattner
  * @version $Id$
  */
-public class PacketUserauthSuccess {
+public final class PacketUserauthSuccess {
 
     private final byte[] payload;
 
@@ -23,11 +23,10 @@ public class PacketUserauthSuccess {
         payload = tw.getBytes();
     }
 
-    public PacketUserauthSuccess(byte payload[], int off, int len) throws IOException {
-        this.payload = new byte[len];
-        System.arraycopy(payload, off, this.payload, 0, len);
+    public PacketUserauthSuccess(byte payload[]) throws IOException {
+        this.payload = payload;
 
-        TypesReader tr = new TypesReader(payload, off, len);
+        TypesReader tr = new TypesReader(payload);
 
         int packet_type = tr.readByte();
 

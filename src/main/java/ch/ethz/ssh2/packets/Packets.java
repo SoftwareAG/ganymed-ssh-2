@@ -10,7 +10,7 @@ package ch.ethz.ssh2.packets;
  * @author Christian Plattner
  * @version 2.50, 03/15/10
  */
-public class Packets
+public final class Packets
 {
 	public static final int SSH_MSG_DISCONNECT = 1;
 	public static final int SSH_MSG_IGNORE = 2;

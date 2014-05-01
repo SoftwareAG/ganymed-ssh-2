@@ -1075,8 +1075,7 @@ public class Connection {
     public synchronized void sendIgnorePacket(byte[] data) throws IOException {
         this.checkConnection();
 
-        PacketIgnore pi = new PacketIgnore();
-        pi.setData(data);
+        PacketIgnore pi = new PacketIgnore(data);
 
         tm.sendMessage(pi.getPayload());
     }

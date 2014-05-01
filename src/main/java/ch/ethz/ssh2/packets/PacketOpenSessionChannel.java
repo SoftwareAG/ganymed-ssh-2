@@ -10,60 +10,43 @@ import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketOpenSessionChannel.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketOpenSessionChannel
-{
-	byte[] payload;
+public final class PacketOpenSessionChannel {
+    private final byte[] payload;
 
-	int channelID;
-	int initialWindowSize;
-	int maxPacketSize;
+    public PacketOpenSessionChannel(int channelID, int initialWindowSize, int maxPacketSize) {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_CHANNEL_OPEN);
+        tw.writeString("session");
+        tw.writeUINT32(channelID);
+        tw.writeUINT32(initialWindowSize);
+        tw.writeUINT32(maxPacketSize);
+        payload = tw.getBytes();
+    }
 
-	public PacketOpenSessionChannel(int channelID, int initialWindowSize,
-			int maxPacketSize)
-	{
-		this.channelID = channelID;
-		this.initialWindowSize = initialWindowSize;
-		this.maxPacketSize = maxPacketSize;
-	}
+    public PacketOpenSessionChannel(byte payload[]) throws IOException {
+        this.payload = payload;
 
-	public PacketOpenSessionChannel(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+        TypesReader tr = new TypesReader(payload);
 
-		TypesReader tr = new TypesReader(payload);
+        int packet_type = tr.readByte();
 
-		int packet_type = tr.readByte();
+        if(packet_type != Packets.SSH_MSG_CHANNEL_OPEN) {
+            throw new PacketTypeException(packet_type);
+        }
 
-		if (packet_type != Packets.SSH_MSG_CHANNEL_OPEN)
-		{
-			throw new PacketTypeException(packet_type);
-		}
-		channelID = tr.readUINT32();
-		initialWindowSize = tr.readUINT32();
-		maxPacketSize = tr.readUINT32();
+        int channelID = tr.readUINT32();
+        int initialWindowSize = tr.readUINT32();
+        int maxPacketSize = tr.readUINT32();
 
-		if (tr.remain() != 0)
-			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
-	}
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_CHANNEL_OPEN);
-			tw.writeString("session");
-			tw.writeUINT32(channelID);
-			tw.writeUINT32(initialWindowSize);
-			tw.writeUINT32(maxPacketSize);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+    public byte[] getPayload() {
+        return payload;
+    }
 }

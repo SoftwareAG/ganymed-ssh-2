@@ -9,52 +9,36 @@ import java.io.IOException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketServiceAccept.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketServiceAccept
-{
-	byte[] payload;
+public final class PacketServiceAccept {
+    private final byte[] payload;
 
-	String serviceName;
-	
-	public PacketServiceAccept(String serviceName)
-	{
-		this.serviceName = serviceName;
-	}
+    public PacketServiceAccept(String serviceName) {
 
-	public PacketServiceAccept(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_SERVICE_ACCEPT);
+        tw.writeString(serviceName);
+        payload = tw.getBytes();
+    }
 
-		TypesReader tr = new TypesReader(payload, off, len);
+    public PacketServiceAccept(byte payload[]) throws IOException {
+        this.payload = payload;
 
-		int packet_type = tr.readByte();
+        TypesReader tr = new TypesReader(payload);
 
-		if (packet_type != Packets.SSH_MSG_SERVICE_ACCEPT)
-		{
-			throw new PacketTypeException(packet_type);
-		}
-		serviceName = "";
-		
-		if (tr.remain() != 0)
-		{
-			serviceName = tr.readString();
-		}	
-	}
+        int packet_type = tr.readByte();
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_SERVICE_ACCEPT);
-			tw.writeString(serviceName);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+        if(packet_type != Packets.SSH_MSG_SERVICE_ACCEPT) {
+            throw new PacketTypeException(packet_type);
+        }
+        if(tr.remain() != 0) {
+            String serviceName = tr.readString();
+        }
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
 }

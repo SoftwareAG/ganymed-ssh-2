@@ -10,46 +10,34 @@ import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketNewKeys.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketNewKeys
-{
-	byte[] payload;
+public final class PacketNewKeys {
+    private final byte[] payload;
 
-	public PacketNewKeys()
-	{
-	}
-	
-	public PacketNewKeys(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+    public PacketNewKeys() {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_NEWKEYS);
+        payload = tw.getBytes();
+    }
 
-		TypesReader tr = new TypesReader(payload, off, len);
+    public PacketNewKeys(byte payload[]) throws IOException {
+        this.payload = payload;
 
-		int packet_type = tr.readByte();
+        TypesReader tr = new TypesReader(payload);
 
-		if (packet_type != Packets.SSH_MSG_NEWKEYS)
-		{
-			throw new PacketTypeException(packet_type);
-		}
-		if (tr.remain() != 0)
-		{
-			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
-		}
-	}
+        int packet_type = tr.readByte();
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_NEWKEYS);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+        if(packet_type != Packets.SSH_MSG_NEWKEYS) {
+            throw new PacketTypeException(packet_type);
+        }
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
 }

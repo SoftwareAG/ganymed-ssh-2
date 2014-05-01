@@ -5,62 +5,48 @@
 package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
-
 import java.math.BigInteger;
 
 import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketKexDhGexReply.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketKexDhGexReply
-{
-	byte[] payload;
+public final class PacketKexDhGexReply {
 
-	byte[] hostKey;
-	BigInteger f;
-	byte[] signature;
+    private final byte[] hostKey;
+    private final BigInteger f;
+    private final byte[] signature;
 
-	public PacketKexDhGexReply(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+    public PacketKexDhGexReply(byte payload[]) throws IOException {
+        TypesReader tr = new TypesReader(payload);
 
-		TypesReader tr = new TypesReader(payload, off, len);
+        int packet_type = tr.readByte();
 
-		int packet_type = tr.readByte();
+        if(packet_type != Packets.SSH_MSG_KEX_DH_GEX_REPLY) {
+            throw new PacketTypeException(packet_type);
+        }
 
-		if (packet_type != Packets.SSH_MSG_KEX_DH_GEX_REPLY)
-		{
-			throw new PacketTypeException(packet_type);
-		}
+        hostKey = tr.readByteString();
+        f = tr.readMPINT();
+        signature = tr.readByteString();
 
-		hostKey = tr.readByteString();
-		f = tr.readMPINT();
-		signature = tr.readByteString();
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
 
-		if (tr.remain() != 0)
-		{
-			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
-		}
-	}
+    public BigInteger getF() {
+        return f;
+    }
 
-	public BigInteger getF()
-	{
-		return f;
-	}
+    public byte[] getHostKey() {
+        return hostKey;
+    }
 
-	public byte[] getHostKey()
-	{
-		return hostKey;
-	}
-
-	public byte[] getSignature()
-	{
-		return signature;
-	}
+    public byte[] getSignature() {
+        return signature;
+    }
 }

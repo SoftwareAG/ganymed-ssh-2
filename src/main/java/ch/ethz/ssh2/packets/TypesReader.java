@@ -14,7 +14,7 @@ import ch.ethz.ssh2.util.StringEncoder;
  * @author Christian Plattner
  * @version $Id$
  */
-public class TypesReader {
+public final class TypesReader {
     byte[] arr;
     int pos = 0;
     int max = 0;

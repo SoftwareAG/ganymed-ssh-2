@@ -11,57 +11,46 @@ import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketKexDHInit.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketKexDHInit
-{
-	byte[] payload;
+public final class PacketKexDHInit {
 
-	BigInteger e;
+    private final byte[] payload;
 
-	public PacketKexDHInit(BigInteger e)
-	{
-		this.e = e;
-	}
+    private final BigInteger e;
 
-	public PacketKexDHInit(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+    public PacketKexDHInit(BigInteger e) {
+        this.e = e;
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_KEXDH_INIT);
+        tw.writeMPInt(e);
+        payload = tw.getBytes();
+    }
 
-		TypesReader tr = new TypesReader(payload, off, len);
+    public PacketKexDHInit(byte payload[]) throws IOException {
+        this.payload = payload;
 
-		int packet_type = tr.readByte();
+        TypesReader tr = new TypesReader(payload);
 
-		if (packet_type != Packets.SSH_MSG_KEXDH_INIT)
-		{
-			throw new PacketTypeException(packet_type);
-		}
+        int packet_type = tr.readByte();
 
-		e = tr.readMPINT();
+        if(packet_type != Packets.SSH_MSG_KEXDH_INIT) {
+            throw new PacketTypeException(packet_type);
+        }
 
-		if (tr.remain() != 0) {
-			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
-		}
-	}
-	
-	public BigInteger getE()
-	{
-		return e;
-	}
-	
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_KEXDH_INIT);
-			tw.writeMPInt(e);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+        e = tr.readMPINT();
+
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
+
+    public BigInteger getE() {
+        return e;
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
 }

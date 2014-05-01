@@ -60,7 +60,7 @@ public class ServerAuthenticationManager implements MessageHandler {
     }
 
     @Override
-    public void handleMessage(byte[] msg, int msglen) throws IOException {
+    public void handleMessage(byte[] msg) throws IOException {
         /* Ignore all authentication messages after successful auth */
 
         if(state.flag_auth_completed) {
@@ -70,7 +70,7 @@ public class ServerAuthenticationManager implements MessageHandler {
         if(!state.flag_auth_serviceRequested) {
 			/* Must be PacketServiceRequest */
 
-            PacketServiceRequest psr = new PacketServiceRequest(msg, 0, msglen);
+            PacketServiceRequest psr = new PacketServiceRequest(msg);
 
             if(!"ssh-userauth".equals(psr.getServiceName())) {
                 throw new IOException("SSH protocol error, expected ssh-userauth service request");
@@ -82,7 +82,7 @@ public class ServerAuthenticationManager implements MessageHandler {
             String banner = state.cb_auth.initAuthentication(state.conn);
 
             if(banner != null) {
-                PacketUserauthBanner pub = new PacketUserauthBanner(banner, "en");
+                PacketUserauthBanner pub = new PacketUserauthBanner(banner);
                 state.tm.sendAsynchronousMessage(pub.getPayload());
             }
 
@@ -93,7 +93,7 @@ public class ServerAuthenticationManager implements MessageHandler {
 
         ServerAuthenticationCallback cb = state.cb_auth;
 
-        TypesReader tr = new TypesReader(msg, 0, msglen);
+        TypesReader tr = new TypesReader(msg);
         int packet_type = tr.readByte();
 
         if(packet_type == Packets.SSH_MSG_USERAUTH_REQUEST) {

@@ -8,43 +8,23 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 /**
- * PacketSessionExecCommand.
- *
  * @author Christian Plattner
  * @version $Id$
  */
-public class PacketSessionExecCommand
-{
-	byte[] payload;
+public final class PacketSessionExecCommand {
+    private final byte[] payload;
 
-	public int recipientChannelID;
-	public boolean wantReply;
-	public String command;
+    public PacketSessionExecCommand(int recipientChannelID, boolean wantReply, String command, String charsetName) throws UnsupportedEncodingException {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_CHANNEL_REQUEST);
+        tw.writeUINT32(recipientChannelID);
+        tw.writeString("exec");
+        tw.writeBoolean(wantReply);
+        tw.writeString(command, charsetName);
+        payload = tw.getBytes();
+    }
 
-	public PacketSessionExecCommand(int recipientChannelID, boolean wantReply, String command)
-	{
-		this.recipientChannelID = recipientChannelID;
-		this.wantReply = wantReply;
-		this.command = command;
-	}
-
-	public byte[] getPayload() throws IOException
-	{
-		return this.getPayload(null);
-	}
-
-	public byte[] getPayload(String charsetName) throws UnsupportedEncodingException
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_CHANNEL_REQUEST);
-			tw.writeUINT32(recipientChannelID);
-			tw.writeString("exec");
-			tw.writeBoolean(wantReply);
-			tw.writeString(command, charsetName);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+    public byte[] getPayload() throws IOException {
+        return payload;
+    }
 }

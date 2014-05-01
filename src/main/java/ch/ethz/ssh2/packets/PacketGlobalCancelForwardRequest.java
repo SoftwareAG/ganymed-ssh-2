@@ -5,40 +5,26 @@
 package ch.ethz.ssh2.packets;
 
 /**
- * PacketGlobalCancelForwardRequest.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketGlobalCancelForwardRequest
-{
-	byte[] payload;
+public final class PacketGlobalCancelForwardRequest {
 
-	public boolean wantReply;
-	public String bindAddress;
-	public int bindPort;
+    private final byte[] payload;
 
-	public PacketGlobalCancelForwardRequest(boolean wantReply, String bindAddress, int bindPort)
-	{
-		this.wantReply = wantReply;
-		this.bindAddress = bindAddress;
-		this.bindPort = bindPort;
-	}
+    public PacketGlobalCancelForwardRequest(boolean wantReply, String bindAddress, int bindPort) {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_GLOBAL_REQUEST);
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_GLOBAL_REQUEST);
-			
-			tw.writeString("cancel-tcpip-forward");
-			tw.writeBoolean(wantReply);
-			tw.writeString(bindAddress);
-			tw.writeUINT32(bindPort);
+        tw.writeString("cancel-tcpip-forward");
+        tw.writeBoolean(wantReply);
+        tw.writeString(bindAddress);
+        tw.writeUINT32(bindPort);
 
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+        payload = tw.getBytes();
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
 }

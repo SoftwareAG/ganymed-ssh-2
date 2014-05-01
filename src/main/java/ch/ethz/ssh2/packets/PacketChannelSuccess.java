@@ -6,31 +6,21 @@
 package ch.ethz.ssh2.packets;
 
 /**
- * PacketChannelSuccess.
- * 
  * @author Christian Plattner
- * @version 2.8
+ * @version $Id$
  */
-public class PacketChannelSuccess
-{
-	byte[] payload;
+public final class PacketChannelSuccess {
 
-	public int recipientChannelID;
+    private final byte[] payload;
 
-	public PacketChannelSuccess(int recipientChannelID)
-	{
-		this.recipientChannelID = recipientChannelID;
-	}
+    public PacketChannelSuccess(int recipientChannelID) {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_CHANNEL_SUCCESS);
+        tw.writeUINT32(recipientChannelID);
+        payload = tw.getBytes();
+    }
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_CHANNEL_SUCCESS);
-			tw.writeUINT32(recipientChannelID);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+    public byte[] getPayload() {
+        return payload;
+    }
 }

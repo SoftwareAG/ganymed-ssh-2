@@ -3,60 +3,81 @@
  * Please refer to the LICENSE.txt for licensing details.
  */
 package ch.ethz.ssh2.packets;
+
 import java.io.IOException;
 
+import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketDisconnect.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketDisconnect
-{
-	byte[] payload;
+public final class PacketDisconnect {
 
-	int reason;
-	String desc;
-	String lang;
+    public enum Reason {
+        SSH_DISCONNECT_HOST_NOT_ALLOWED_TO_CONNECT,
+        SSH_DISCONNECT_PROTOCOL_ERROR,
+        SSH_DISCONNECT_KEY_EXCHANGE_FAILED,
+        SSH_DISCONNECT_RESERVED,
+        SSH_DISCONNECT_MAC_ERROR,
+        SSH_DISCONNECT_COMPRESSION_ERROR,
+        SSH_DISCONNECT_SERVICE_NOT_AVAILABLE,
+        SSH_DISCONNECT_PROTOCOL_VERSION_NOT_SUPPORTED,
+        SSH_DISCONNECT_HOST_KEY_NOT_VERIFIABLE,
+        SSH_DISCONNECT_CONNECTION_LOST,
+        SSH_DISCONNECT_BY_APPLICATION,
+        SSH_DISCONNECT_TOO_MANY_CONNECTIONS,
+        SSH_DISCONNECT_AUTH_CANCELLED_BY_USER,
+        SSH_DISCONNECT_NO_MORE_AUTH_METHODS_AVAILABLE,
+        SSH_DISCONNECT_ILLEGAL_USER_NAME
+    }
 
-	public PacketDisconnect(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+    private final byte[] payload;
 
-		TypesReader tr = new TypesReader(payload, off, len);
+    private final Reason reason;
 
-		int packet_type = tr.readByte();
+    private final String message;
 
-		if (packet_type != Packets.SSH_MSG_DISCONNECT)
-		{
-			throw new PacketTypeException(packet_type);
-		}
-		reason = tr.readUINT32();
-		desc = tr.readString();
-		lang = tr.readString();
-	}
+    public PacketDisconnect(byte payload[]) throws IOException {
+        this.payload = payload;
 
-	public PacketDisconnect(int reason, String desc, String lang)
-	{
-		this.reason = reason;
-		this.desc = desc;
-		this.lang = lang;
-	}
-	
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_DISCONNECT);
-			tw.writeUINT32(reason);
-			tw.writeString(desc);
-			tw.writeString(lang);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+        TypesReader tr = new TypesReader(payload);
+
+        int packet_type = tr.readByte();
+
+        if(packet_type != Packets.SSH_MSG_DISCONNECT) {
+            throw new PacketTypeException(packet_type);
+        }
+        reason = PacketDisconnect.Reason.values()[tr.readUINT32()];
+        message = tr.readString();
+        String lang = tr.readString();
+
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
+
+    public PacketDisconnect(Reason reason, String desc) {
+        this.reason = reason;
+        this.message = desc;
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_DISCONNECT);
+        tw.writeUINT32(reason.ordinal());
+        tw.writeString(desc);
+        tw.writeString("");
+        payload = tw.getBytes();
+    }
+
+    public Reason getReason() {
+        return reason;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
 }

@@ -13,7 +13,7 @@ import ch.ethz.ssh2.util.StringEncoder;
  * @author Christian Plattner
  * @version $Id$
  */
-public class TypesWriter {
+public final class TypesWriter {
     byte arr[];
     int pos;
 

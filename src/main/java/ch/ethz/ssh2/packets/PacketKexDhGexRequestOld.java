@@ -7,31 +7,21 @@ package ch.ethz.ssh2.packets;
 import ch.ethz.ssh2.DHGexParameters;
 
 /**
- * PacketKexDhGexRequestOld.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketKexDhGexRequestOld
-{
-	byte[] payload;
+public final class PacketKexDhGexRequestOld {
 
-	int n;
+    private final byte[] payload;
 
-	public PacketKexDhGexRequestOld(DHGexParameters para)
-	{
-		this.n = para.getPref_group_len();
-	}
+    public PacketKexDhGexRequestOld(DHGexParameters para) {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_KEX_DH_GEX_REQUEST_OLD);
+        tw.writeUINT32(para.getPref_group_len());
+        payload = tw.getBytes();
+    }
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_KEX_DH_GEX_REQUEST_OLD);
-			tw.writeUINT32(n);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+    public byte[] getPayload() {
+        return payload;
+    }
 }

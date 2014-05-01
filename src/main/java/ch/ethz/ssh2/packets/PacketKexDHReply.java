@@ -5,82 +5,67 @@
 package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
-
 import java.math.BigInteger;
 
 import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketKexDHReply.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketKexDHReply
-{
-	byte[] payload;
+public final class PacketKexDHReply {
 
-	byte[] hostKey;
-	BigInteger f;
-	byte[] signature;
-	
-	public PacketKexDHReply(byte[] hostKey, BigInteger f, byte[] signature)
-	{
-		this.hostKey = hostKey;
-		this.f = f;
-		this.signature = signature;
-	}
-	
-	public PacketKexDHReply(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+    private final byte[] payload;
 
-		TypesReader tr = new TypesReader(payload, off, len);
+    private final byte[] hostKey;
+    private final BigInteger f;
+    private final byte[] signature;
 
-		int packet_type = tr.readByte();
+    public PacketKexDHReply(byte[] hostKey, BigInteger f, byte[] signature) {
+        this.hostKey = hostKey;
+        this.f = f;
+        this.signature = signature;
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_KEXDH_REPLY);
+        tw.writeString(hostKey, 0, hostKey.length);
+        tw.writeMPInt(f);
+        tw.writeString(signature, 0, signature.length);
+        payload = tw.getBytes();
+    }
 
-		if (packet_type != Packets.SSH_MSG_KEXDH_REPLY)
-		{
-			throw new PacketTypeException(packet_type);
-		}
-		hostKey = tr.readByteString();
-		f = tr.readMPINT();
-		signature = tr.readByteString();
+    public PacketKexDHReply(byte payload[]) throws IOException {
+        this.payload = payload;
 
-		if (tr.remain() != 0)
-		{
-			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
-		}
-	}
+        TypesReader tr = new TypesReader(payload);
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_KEXDH_REPLY);
-			tw.writeString(hostKey, 0, hostKey.length);
-			tw.writeMPInt(f);
-			tw.writeString(signature, 0, signature.length);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
-	
-	public BigInteger getF()
-	{
-		return f;
-	}
-	
-	public byte[] getHostKey()
-	{
-		return hostKey;
-	}
+        int packet_type = tr.readByte();
 
-	public byte[] getSignature()
-	{
-		return signature;
-	}
+        if(packet_type != Packets.SSH_MSG_KEXDH_REPLY) {
+            throw new PacketTypeException(packet_type);
+        }
+        hostKey = tr.readByteString();
+        f = tr.readMPINT();
+        signature = tr.readByteString();
+
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
+
+    public BigInteger getF() {
+        return f;
+    }
+
+    public byte[] getHostKey() {
+        return hostKey;
+    }
+
+    public byte[] getSignature() {
+        return signature;
+    }
 }

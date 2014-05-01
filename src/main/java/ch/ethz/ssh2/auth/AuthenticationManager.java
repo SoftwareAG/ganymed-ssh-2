@@ -88,7 +88,7 @@ public class AuthenticationManager implements MessageHandler {
                 return msg;
             }
 
-            PacketUserauthBanner sb = new PacketUserauthBanner(msg, 0, msg.length);
+            PacketUserauthBanner sb = new PacketUserauthBanner(msg);
             banner = sb.getBanner();
         }
     }
@@ -115,7 +115,7 @@ public class AuthenticationManager implements MessageHandler {
             tm.sendMessage(sr.getPayload());
 
             byte[] msg = getNextMessage();
-            new PacketServiceAccept(msg, 0, msg.length);
+            new PacketServiceAccept(msg);
 
             PacketUserauthRequestNone urn = new PacketUserauthRequestNone("ssh-connection", user);
             tm.sendMessage(urn.getPayload());
@@ -131,7 +131,7 @@ public class AuthenticationManager implements MessageHandler {
             }
 
             if(msg[0] == Packets.SSH_MSG_USERAUTH_FAILURE) {
-                PacketUserauthFailure puf = new PacketUserauthFailure(msg, 0, msg.length);
+                PacketUserauthFailure puf = new PacketUserauthFailure(msg);
 
                 remainingMethods = puf.getAuthThatCanContinue();
                 isPartialSuccess = puf.isPartialSuccess();
@@ -194,7 +194,7 @@ public class AuthenticationManager implements MessageHandler {
         }
 
         if(type == Packets.SSH_MSG_USERAUTH_FAILURE) {
-            PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
+            PacketUserauthFailure puf = new PacketUserauthFailure(ar);
 
             remainingMethods = puf.getAuthThatCanContinue();
             isPartialSuccess = puf.isPartialSuccess();
@@ -285,7 +285,7 @@ public class AuthenticationManager implements MessageHandler {
                     tm.removeMessageHandler(this, 0, 255);
                     return true;
                 case Packets.SSH_MSG_USERAUTH_FAILURE:
-                    PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
+                    PacketUserauthFailure puf = new PacketUserauthFailure(ar);
 
                     remainingMethods = puf.getAuthThatCanContinue();
                     isPartialSuccess = puf.isPartialSuccess();
@@ -330,7 +330,7 @@ public class AuthenticationManager implements MessageHandler {
                     tm.removeMessageHandler(this, 0, 255);
                     return true;
                 case Packets.SSH_MSG_USERAUTH_FAILURE:
-                    PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
+                    PacketUserauthFailure puf = new PacketUserauthFailure(ar);
                     remainingMethods = puf.getAuthThatCanContinue();
                     isPartialSuccess = puf.isPartialSuccess();
                     return false;
@@ -367,14 +367,14 @@ public class AuthenticationManager implements MessageHandler {
                         tm.removeMessageHandler(this, 0, 255);
                         return true;
                     case Packets.SSH_MSG_USERAUTH_FAILURE:
-                        PacketUserauthFailure puf = new PacketUserauthFailure(ar, 0, ar.length);
+                        PacketUserauthFailure puf = new PacketUserauthFailure(ar);
 
                         remainingMethods = puf.getAuthThatCanContinue();
                         isPartialSuccess = puf.isPartialSuccess();
 
                         return false;
                     case Packets.SSH_MSG_USERAUTH_INFO_REQUEST:
-                        PacketUserauthInfoRequest pui = new PacketUserauthInfoRequest(ar, 0, ar.length);
+                        PacketUserauthInfoRequest pui = new PacketUserauthInfoRequest(ar);
                         String[] responses;
                         try {
                             responses = cb.replyToChallenge(pui.getName(), pui.getInstruction(), pui.getNumPrompts(), pui
@@ -402,11 +402,9 @@ public class AuthenticationManager implements MessageHandler {
     }
 
     @Override
-    public void handleMessage(byte[] msg, int msglen) throws IOException {
+    public void handleMessage(byte[] message) throws IOException {
         synchronized(packets) {
-            byte[] tmp = new byte[msglen];
-            System.arraycopy(msg, 0, tmp, 0, msglen);
-            packets.add(tmp);
+            packets.add(message);
             packets.notifyAll();
             if(packets.size() > 5) {
                 connectionClosed = true;

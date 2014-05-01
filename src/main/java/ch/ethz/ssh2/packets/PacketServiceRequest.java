@@ -10,56 +10,45 @@ import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketServiceRequest.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketServiceRequest
-{
-	byte[] payload;
+public final class PacketServiceRequest {
+    private final byte[] payload;
 
-	String serviceName;
+    private final String serviceName;
 
-	public PacketServiceRequest(String serviceName)
-	{
-		this.serviceName = serviceName;
-	}
+    public PacketServiceRequest(String serviceName) {
+        this.serviceName = serviceName;
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_SERVICE_REQUEST);
+        tw.writeString(serviceName);
+        payload = tw.getBytes();
+    }
 
-	public String getServiceName()
-	{
-		return serviceName;
-	}
-	
-	public PacketServiceRequest(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+    public String getServiceName() {
+        return serviceName;
+    }
 
-		TypesReader tr = new TypesReader(payload, off, len);
+    public PacketServiceRequest(byte payload[]) throws IOException {
+        this.payload = payload;
 
-		int packet_type = tr.readByte();
+        TypesReader tr = new TypesReader(payload);
 
-		if (packet_type != Packets.SSH_MSG_SERVICE_REQUEST)
-		{
-			throw new PacketTypeException(packet_type);
-		}
+        int packet_type = tr.readByte();
 
-		serviceName = tr.readString();
+        if(packet_type != Packets.SSH_MSG_SERVICE_REQUEST) {
+            throw new PacketTypeException(packet_type);
+        }
 
-		if (tr.remain() != 0)
-			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
-	}
+        serviceName = tr.readString();
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_SERVICE_REQUEST);
-			tw.writeString(serviceName);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
 }

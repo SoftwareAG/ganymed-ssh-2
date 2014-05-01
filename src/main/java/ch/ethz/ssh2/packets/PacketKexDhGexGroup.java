@@ -5,54 +5,42 @@
 package ch.ethz.ssh2.packets;
 
 import java.io.IOException;
-
 import java.math.BigInteger;
 
 import ch.ethz.ssh2.PacketFormatException;
+import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketKexDhGexGroup.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketKexDhGexGroup
-{
-	byte[] payload;
+public final class PacketKexDhGexGroup {
 
-	BigInteger p;
-	BigInteger g;
+    private final BigInteger p;
+    private final BigInteger g;
 
-	public PacketKexDhGexGroup(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+    public PacketKexDhGexGroup(byte payload[]) throws IOException {
+        TypesReader tr = new TypesReader(payload);
 
-		TypesReader tr = new TypesReader(payload, off, len);
+        int packet_type = tr.readByte();
 
-		int packet_type = tr.readByte();
+        if(packet_type != Packets.SSH_MSG_KEX_DH_GEX_GROUP) {
+            throw new PacketTypeException(packet_type);
+        }
 
-		if (packet_type != Packets.SSH_MSG_KEX_DH_GEX_GROUP)
-			throw new IllegalArgumentException(
-					"This is not a SSH_MSG_KEX_DH_GEX_GROUP! (" + packet_type
-							+ ")");
+        p = tr.readMPINT();
+        g = tr.readMPINT();
 
-		p = tr.readMPINT();
-		g = tr.readMPINT();
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
 
-		if (tr.remain() != 0)
-		{
-			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
-		}
-	}
+    public BigInteger getG() {
+        return g;
+    }
 
-	public BigInteger getG()
-	{
-		return g;
-	}
-
-	public BigInteger getP()
-	{
-		return p;
-	}
+    public BigInteger getP() {
+        return p;
+    }
 }

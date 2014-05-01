@@ -10,27 +10,21 @@ import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketUserauthInfoRequest.
- *
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketUserauthInfoRequest {
-    byte[] payload;
+public final class PacketUserauthInfoRequest {
 
-    String name;
-    String instruction;
-    String languageTag;
-    int numPrompts;
+    private final String name;
+    private final String instruction;
+    private final String languageTag;
+    private final int numPrompts;
 
-    String prompt[];
-    boolean echo[];
+    private final String prompt[];
+    private final boolean echo[];
 
-    public PacketUserauthInfoRequest(byte payload[], int off, int len) throws IOException {
-        this.payload = new byte[len];
-        System.arraycopy(payload, off, this.payload, 0, len);
-
-        TypesReader tr = new TypesReader(payload, off, len);
+    public PacketUserauthInfoRequest(byte payload[]) throws IOException {
+        TypesReader tr = new TypesReader(payload);
 
         int packet_type = tr.readByte();
 

@@ -8,7 +8,8 @@ package ch.ethz.ssh2.packets;
  * @author Christian Plattner
  * @version $Id$
  */
-public class PacketUserauthRequestInteractive {
+public final class PacketUserauthRequestInteractive {
+
     private final byte[] payload;
 
     public PacketUserauthRequestInteractive(String serviceName, String user, String[] submethods) {

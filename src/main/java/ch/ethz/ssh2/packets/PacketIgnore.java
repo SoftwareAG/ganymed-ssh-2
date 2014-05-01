@@ -9,57 +9,26 @@ import java.io.IOException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketIgnore.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketIgnore
-{
-	byte[] payload;
+public final class PacketIgnore {
+    private final byte[] payload;
 
-	byte[] data;
+    public PacketIgnore(byte[] data) {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_IGNORE);
 
-	public void setData(byte[] data)
-	{
-		this.data = data;
-		payload = null;
-	}
+        if(data != null) {
+            tw.writeString(data, 0, data.length);
+        }
+        else {
+            tw.writeString("");
+        }
+        payload = tw.getBytes();
+    }
 
-	public PacketIgnore()
-	{
-	}
-
-	public PacketIgnore(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
-
-		TypesReader tr = new TypesReader(payload, off, len);
-
-		int packet_type = tr.readByte();
-
-		if (packet_type != Packets.SSH_MSG_IGNORE)
-		{
-			throw new PacketTypeException(packet_type);
-		}
-		/* Could parse String body */
-	}
-
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_IGNORE);
-
-			if (data != null)
-				tw.writeString(data, 0, data.length);
-			else
-				tw.writeString("");
-
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+    public byte[] getPayload() {
+        return payload;
+    }
 }

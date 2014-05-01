@@ -10,59 +10,46 @@ import ch.ethz.ssh2.PacketFormatException;
 import ch.ethz.ssh2.PacketTypeException;
 
 /**
- * PacketUserauthBanner.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketUserauthBanner
-{
-	byte[] payload;
+public final class PacketUserauthBanner {
+    private final byte[] payload;
 
-	String message;
-	String language;
+    private final String message;
 
-	public PacketUserauthBanner(String message, String language)
-	{
-		this.message = message;
-		this.language = language;
-	}
+    public PacketUserauthBanner(String message) {
+        this.message = message;
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_USERAUTH_BANNER);
+        tw.writeString(message);
+        tw.writeString("");
+        payload = tw.getBytes();
+    }
 
-	public String getBanner()
-	{
-		return message;
-	}
-	
-	public PacketUserauthBanner(byte payload[], int off, int len) throws IOException
-	{
-		this.payload = new byte[len];
-		System.arraycopy(payload, off, this.payload, 0, len);
+    public String getBanner() {
+        return message;
+    }
 
-		TypesReader tr = new TypesReader(payload, off, len);
+    public PacketUserauthBanner(byte payload[]) throws IOException {
+        this.payload = payload;
 
-		int packet_type = tr.readByte();
+        TypesReader tr = new TypesReader(payload);
 
-		if (packet_type != Packets.SSH_MSG_USERAUTH_BANNER)
-		{
-			throw new PacketTypeException(packet_type);
-		}
-		message = tr.readString("UTF-8");
-		language = tr.readString();
+        int packet_type = tr.readByte();
 
-		if (tr.remain() != 0)
-			throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
-	}
+        if(packet_type != Packets.SSH_MSG_USERAUTH_BANNER) {
+            throw new PacketTypeException(packet_type);
+        }
+        message = tr.readString("UTF-8");
+        String language = tr.readString();
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_USERAUTH_BANNER);
-			tw.writeString(message);
-			tw.writeString(language);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+        if(tr.remain() != 0) {
+            throw new PacketFormatException(String.format("Padding in %s", Packets.getMessageName(packet_type)));
+        }
+    }
+
+    public byte[] getPayload() {
+        return payload;
+    }
 }

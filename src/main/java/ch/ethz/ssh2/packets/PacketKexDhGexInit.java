@@ -7,31 +7,21 @@ package ch.ethz.ssh2.packets;
 import java.math.BigInteger;
 
 /**
- * PacketKexDhGexInit.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
-public class PacketKexDhGexInit
-{
-	byte[] payload;
+public final class PacketKexDhGexInit {
 
-	BigInteger e;
+    private final byte[] payload;
 
-	public PacketKexDhGexInit(BigInteger e)
-	{
-		this.e = e;
-	}
+    public PacketKexDhGexInit(BigInteger e) {
+        TypesWriter tw = new TypesWriter();
+        tw.writeByte(Packets.SSH_MSG_KEX_DH_GEX_INIT);
+        tw.writeMPInt(e);
+        payload = tw.getBytes();
+    }
 
-	public byte[] getPayload()
-	{
-		if (payload == null)
-		{
-			TypesWriter tw = new TypesWriter();
-			tw.writeByte(Packets.SSH_MSG_KEX_DH_GEX_INIT);
-			tw.writeMPInt(e);
-			payload = tw.getBytes();
-		}
-		return payload;
-	}
+    public byte[] getPayload() {
+        return payload;
+    }
 }

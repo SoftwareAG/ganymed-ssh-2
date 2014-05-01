@@ -47,7 +47,7 @@ public class ServerKexManager extends KexManager {
     }
 
     @Override
-    public void handleMessage(byte[] msg, int msglen) throws IOException {
+    public void handleMessage(byte[] msg) throws IOException {
         PacketKexInit kip;
 
         if((kxs == null) && (msg[0] != Packets.SSH_MSG_KEXINIT)) {
@@ -78,7 +78,7 @@ public class ServerKexManager extends KexManager {
                 tm.sendKexMessage(kip.getPayload());
             }
 
-            kip = new PacketKexInit(msg, 0, msglen);
+            kip = new PacketKexInit(msg);
             kxs.remoteKEX = kip;
 
             kxs.np = mergeKexParameters(kxs.remoteKEX.getKexParameters(), kxs.localKEX.getKexParameters());
@@ -161,7 +161,7 @@ public class ServerKexManager extends KexManager {
         if(kxs.np.kex_algo.equals("diffie-hellman-group1-sha1")
                 || kxs.np.kex_algo.equals("diffie-hellman-group14-sha1")) {
             if(kxs.state == 1) {
-                PacketKexDHInit dhi = new PacketKexDHInit(msg, 0, msglen);
+                PacketKexDHInit dhi = new PacketKexDHInit(msg);
 
                 kxs.dhx.setE(dhi.getE());
 
