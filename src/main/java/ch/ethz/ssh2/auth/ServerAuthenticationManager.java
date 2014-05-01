@@ -33,7 +33,7 @@ public class ServerAuthenticationManager implements MessageHandler {
             PacketUserauthSuccess pus = new PacketUserauthSuccess();
             state.tm.sendAsynchronousMessage(pus.getPayload());
 
-            state.tm.removeMessageHandler(this, 0, 255);
+            state.tm.removeMessageHandler(this);
             state.tm.registerMessageHandler(this, 50, 79);
 
             state.cm = new ChannelManager(state);

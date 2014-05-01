@@ -61,10 +61,10 @@ public abstract class TransportManager {
     private Thread asynchronousThread = null;
     private boolean asynchronousPending = false;
 
-    private Socket sock;
+    private Socket socket;
 
-    protected TransportManager(final Socket sock) {
-        this.sock = sock;
+    protected TransportManager(final Socket socket) {
+        this.socket = socket;
     }
 
     private static final class AsynchronousEntry {
@@ -175,7 +175,7 @@ public abstract class TransportManager {
                     //
                 }
                 try {
-                    sock.close();
+                    socket.close();
                 }
                 catch(IOException ignore) {
                     //
@@ -195,7 +195,7 @@ public abstract class TransportManager {
         // Do not acquire the semaphore, perhaps somebody is inside (and waits until
         // the remote side is ready to accept new data
         try {
-            sock.close();
+            socket.close();
         }
         catch(IOException ignore) {
         }
@@ -251,11 +251,11 @@ public abstract class TransportManager {
         }
     }
 
-    public void removeMessageHandler(MessageHandler mh, int low, int high) {
+    public void removeMessageHandler(MessageHandler handler) {
         synchronized(messageHandlers) {
             for(int i = 0; i < messageHandlers.size(); i++) {
                 HandlerEntry he = messageHandlers.get(i);
-                if((he.mh == mh) && (he.low == low) && (he.high == high)) {
+                if(he.mh == handler) {
                     messageHandlers.remove(i);
                     break;
                 }

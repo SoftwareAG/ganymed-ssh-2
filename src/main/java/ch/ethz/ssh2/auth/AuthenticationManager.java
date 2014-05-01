@@ -7,10 +7,10 @@ package ch.ethz.ssh2.auth;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 import ch.ethz.ssh2.InteractiveCallback;
 import ch.ethz.ssh2.PacketTypeException;
@@ -38,12 +38,13 @@ import ch.ethz.ssh2.transport.MessageHandler;
 
 /**
  * @author Christian Plattner
+ * @version $Id$
  */
 public class AuthenticationManager implements MessageHandler {
     private ClientTransportManager tm;
 
-    private final List<byte[]> packets
-            = new ArrayList<byte[]>();
+    private final BlockingQueue<byte[]> packets
+            = new ArrayBlockingQueue<byte[]>(5);
 
     private boolean connectionClosed = false;
 
@@ -61,35 +62,33 @@ public class AuthenticationManager implements MessageHandler {
         this.tm = tm;
     }
 
-    byte[] deQueue() throws IOException {
-        synchronized(packets) {
-            while(packets.size() == 0) {
-                if(connectionClosed) {
-                    throw tm.getReasonClosedCause();
-                }
-                try {
-                    packets.wait();
-                }
-                catch(InterruptedException e) {
-                    throw new InterruptedIOException(e.getMessage());
-                }
-            }
-            byte[] res = packets.get(0);
-            packets.remove(0);
-            return res;
+    private byte[] deQueue() throws IOException {
+        if(connectionClosed) {
+            throw tm.getReasonClosedCause();
+        }
+        // Wait for packet
+        try {
+            return packets.take();
+        }
+        catch(InterruptedException e) {
+            throw new InterruptedIOException(e.getMessage());
         }
     }
 
     byte[] getNextMessage() throws IOException {
         while(true) {
-            byte[] msg = deQueue();
-
-            if(msg[0] != Packets.SSH_MSG_USERAUTH_BANNER) {
-                return msg;
+            byte[] message = deQueue();
+            switch(message[0]) {
+                case Packets.SSH_MSG_USERAUTH_BANNER:
+                    // The server may send an SSH_MSG_USERAUTH_BANNER message at any
+                    // time after this authentication protocol starts and before
+                    // authentication is successful.
+                    PacketUserauthBanner sb = new PacketUserauthBanner(message);
+                    banner = sb.getBanner();
+                    break;
+                default:
+                    return message;
             }
-
-            PacketUserauthBanner sb = new PacketUserauthBanner(msg);
-            banner = sb.getBanner();
         }
     }
 
@@ -100,7 +99,6 @@ public class AuthenticationManager implements MessageHandler {
 
     public String getBanner() {
         return banner;
-
     }
 
     public boolean getPartialSuccess() {
@@ -114,30 +112,25 @@ public class AuthenticationManager implements MessageHandler {
             PacketServiceRequest sr = new PacketServiceRequest("ssh-userauth");
             tm.sendMessage(sr.getPayload());
 
-            byte[] msg = getNextMessage();
-            new PacketServiceAccept(msg);
+            final PacketServiceAccept accept = new PacketServiceAccept(this.getNextMessage());
 
-            PacketUserauthRequestNone urn = new PacketUserauthRequestNone("ssh-connection", user);
-            tm.sendMessage(urn.getPayload());
+            PacketUserauthRequestNone auth = new PacketUserauthRequestNone("ssh-connection", user);
+            tm.sendMessage(auth.getPayload());
 
-            msg = getNextMessage();
-
+            byte[] message = this.getNextMessage();
             initDone = true;
-
-            if(msg[0] == Packets.SSH_MSG_USERAUTH_SUCCESS) {
-                authenticated = true;
-                tm.removeMessageHandler(this, 0, 255);
-                return true;
+            switch(message[0]) {
+                case Packets.SSH_MSG_USERAUTH_SUCCESS:
+                    authenticated = true;
+                    tm.removeMessageHandler(this);
+                    return true;
+                case Packets.SSH_MSG_USERAUTH_FAILURE:
+                    PacketUserauthFailure puf = new PacketUserauthFailure(message);
+                    remainingMethods = puf.getAuthThatCanContinue();
+                    isPartialSuccess = puf.isPartialSuccess();
+                    return false;
             }
-
-            if(msg[0] == Packets.SSH_MSG_USERAUTH_FAILURE) {
-                PacketUserauthFailure puf = new PacketUserauthFailure(msg);
-
-                remainingMethods = puf.getAuthThatCanContinue();
-                isPartialSuccess = puf.isPartialSuccess();
-                return false;
-            }
-            throw new PacketTypeException(msg[0]);
+            throw new PacketTypeException(message[0]);
         }
         return authenticated;
     }
@@ -155,7 +148,7 @@ public class AuthenticationManager implements MessageHandler {
         return false;
     }
 
-    boolean authenticatePublicKey(String user, AgentIdentity identity) throws IOException {
+    private boolean authenticatePublicKey(String user, AgentIdentity identity) throws IOException {
         if(!remainingMethods.contains("publickey")) {
             throw new IOException("Authentication method not supported");
         }
@@ -184,22 +177,20 @@ public class AuthenticationManager implements MessageHandler {
                 "ssh-connection", user, identity.getAlgName(), pubKeyBlob, response);
         tm.sendMessage(ua.getPayload());
 
-        byte[] ar = getNextMessage();
+        byte[] message = getNextMessage();
+        final int type = message[0];
+        switch(type) {
+            case Packets.SSH_MSG_USERAUTH_SUCCESS:
+                authenticated = true;
+                tm.removeMessageHandler(this);
+                return true;
+            case Packets.SSH_MSG_USERAUTH_FAILURE:
+                PacketUserauthFailure puf = new PacketUserauthFailure(message);
 
-        final int type = ar[0];
-        if(type == Packets.SSH_MSG_USERAUTH_SUCCESS) {
-            authenticated = true;
-            tm.removeMessageHandler(this, 0, 255);
-            return true;
-        }
+                remainingMethods = puf.getAuthThatCanContinue();
+                isPartialSuccess = puf.isPartialSuccess();
 
-        if(type == Packets.SSH_MSG_USERAUTH_FAILURE) {
-            PacketUserauthFailure puf = new PacketUserauthFailure(ar);
-
-            remainingMethods = puf.getAuthThatCanContinue();
-            isPartialSuccess = puf.isPartialSuccess();
-
-            return false;
+                return false;
         }
         throw new PacketTypeException(type);
     }
@@ -275,17 +266,15 @@ public class AuthenticationManager implements MessageHandler {
             else {
                 throw new IOException("Unknown private key type returned by the PEM decoder.");
             }
-
-            byte[] ar = getNextMessage();
-
-            final int type = ar[0];
+            byte[] message = getNextMessage();
+            final int type = message[0];
             switch(type) {
                 case Packets.SSH_MSG_USERAUTH_SUCCESS:
                     authenticated = true;
-                    tm.removeMessageHandler(this, 0, 255);
+                    tm.removeMessageHandler(this);
                     return true;
                 case Packets.SSH_MSG_USERAUTH_FAILURE:
-                    PacketUserauthFailure puf = new PacketUserauthFailure(ar);
+                    PacketUserauthFailure puf = new PacketUserauthFailure(message);
 
                     remainingMethods = puf.getAuthThatCanContinue();
                     isPartialSuccess = puf.isPartialSuccess();
@@ -296,7 +285,7 @@ public class AuthenticationManager implements MessageHandler {
         }
         catch(IOException e) {
             tm.close(e);
-            throw new IOException("Publickey authentication failed.", e);
+            throw e;
         }
     }
 
@@ -307,7 +296,7 @@ public class AuthenticationManager implements MessageHandler {
         }
         catch(IOException e) {
             tm.close(e);
-            throw new IOException("None authentication failed.", e);
+            throw e;
         }
     }
 
@@ -322,24 +311,24 @@ public class AuthenticationManager implements MessageHandler {
             PacketUserauthRequestPassword ua = new PacketUserauthRequestPassword("ssh-connection", user, pass);
             tm.sendMessage(ua.getPayload());
 
-            byte[] ar = getNextMessage();
-
-            switch(ar[0]) {
+            byte[] message = getNextMessage();
+            final int type = message[0];
+            switch(type) {
                 case Packets.SSH_MSG_USERAUTH_SUCCESS:
                     authenticated = true;
-                    tm.removeMessageHandler(this, 0, 255);
+                    tm.removeMessageHandler(this);
                     return true;
                 case Packets.SSH_MSG_USERAUTH_FAILURE:
-                    PacketUserauthFailure puf = new PacketUserauthFailure(ar);
+                    PacketUserauthFailure puf = new PacketUserauthFailure(message);
                     remainingMethods = puf.getAuthThatCanContinue();
                     isPartialSuccess = puf.isPartialSuccess();
                     return false;
             }
-            throw new PacketTypeException(ar[0]);
+            throw new PacketTypeException(type);
         }
         catch(IOException e) {
             tm.close(e);
-            throw new IOException("Password authentication failed.", e);
+            throw e;
         }
     }
 
@@ -358,27 +347,26 @@ public class AuthenticationManager implements MessageHandler {
             tm.sendMessage(ua.getPayload());
 
             while(true) {
-                byte[] ar = getNextMessage();
-
-                final int type = ar[0];
+                byte[] message = getNextMessage();
+                final int type = message[0];
                 switch(type) {
                     case Packets.SSH_MSG_USERAUTH_SUCCESS:
                         authenticated = true;
-                        tm.removeMessageHandler(this, 0, 255);
+                        tm.removeMessageHandler(this);
                         return true;
                     case Packets.SSH_MSG_USERAUTH_FAILURE:
-                        PacketUserauthFailure puf = new PacketUserauthFailure(ar);
+                        PacketUserauthFailure puf = new PacketUserauthFailure(message);
 
                         remainingMethods = puf.getAuthThatCanContinue();
                         isPartialSuccess = puf.isPartialSuccess();
 
                         return false;
                     case Packets.SSH_MSG_USERAUTH_INFO_REQUEST:
-                        PacketUserauthInfoRequest pui = new PacketUserauthInfoRequest(ar);
+                        PacketUserauthInfoRequest info = new PacketUserauthInfoRequest(message);
                         String[] responses;
                         try {
-                            responses = cb.replyToChallenge(pui.getName(), pui.getInstruction(), pui.getNumPrompts(), pui
-                                    .getPrompt(), pui.getEcho());
+                            responses = cb.replyToChallenge(info.getName(), info.getInstruction(), info.getNumPrompts(),
+                                    info.getPrompt(), info.getEcho());
                         }
                         catch(Exception e) {
                             throw new IOException("Exception in callback.", e);
@@ -392,7 +380,7 @@ public class AuthenticationManager implements MessageHandler {
         }
         catch(IOException e) {
             tm.close(e);
-            throw new IOException("Keyboard-interactive authentication failed.", e);
+            throw e;
         }
     }
 
@@ -403,13 +391,6 @@ public class AuthenticationManager implements MessageHandler {
 
     @Override
     public void handleMessage(byte[] message) throws IOException {
-        synchronized(packets) {
-            packets.add(message);
-            packets.notifyAll();
-            if(packets.size() > 5) {
-                connectionClosed = true;
-                throw new IOException("Server is flooding us with authentication packets.");
-            }
-        }
+        packets.add(message);
     }
 }
