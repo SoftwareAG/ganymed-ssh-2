@@ -8,7 +8,6 @@ package ch.ethz.ssh2.transport;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,8 +26,8 @@ import ch.ethz.ssh2.packets.TypesReader;
 import ch.ethz.ssh2.signature.DSAPrivateKey;
 import ch.ethz.ssh2.signature.RSAPrivateKey;
 
-/*
- * Yes, the "standard" is a big mess. On one side, the say that arbitary channel
+/**
+ * Yes, the "standard" is a big mess. On one side, the say that arbitrary channel
  * packets are allowed during kex exchange, on the other side we need to blindly
  * ignore the next _packet_ if the KEX guess was wrong. Where do we know from that
  * the next packet is not a channel data packet? Yes, we could check if it is in
@@ -38,13 +37,6 @@ import ch.ethz.ssh2.signature.RSAPrivateKey;
  * other than KEX, they become horribly irritated and kill the connection. Since
  * we are very likely going to communicate with OpenSSH servers, we have to play
  * the same game - even though we could do better.
- * 
- * btw: having stdout and stderr on the same channel, with a shared window, is
- * also a VERY good idea... =(
- */
-
-/**
- * TransportManager.
  *
  * @author Christian Plattner
  * @version $Id$
@@ -63,7 +55,9 @@ public abstract class TransportManager {
      */
     public static final int MAX_PACKET_SIZE = 64 * 1024;
 
-    private final List<AsynchronousEntry> asynchronousQueue = new ArrayList<AsynchronousEntry>();
+    private final List<AsynchronousEntry> asynchronousQueue
+            = new ArrayList<AsynchronousEntry>();
+
     private Thread asynchronousThread = null;
     private boolean asynchronousPending = false;
 
@@ -74,21 +68,18 @@ public abstract class TransportManager {
     }
 
     private static final class AsynchronousEntry {
-        public byte[] msg;
-        public Runnable run;
+        public byte[] message;
 
-        public AsynchronousEntry(byte[] msg, Runnable run) {
-            this.msg = msg;
-            this.run = run;
+        public AsynchronousEntry(byte[] message) {
+            this.message = message;
         }
     }
 
-    private final class AsynchronousWorker extends Thread {
+    private final class AsynchronousWorker implements Runnable {
         @Override
         public void run() {
             while(true) {
-                AsynchronousEntry item;
-
+                final AsynchronousEntry item;
                 synchronized(asynchronousQueue) {
                     if(asynchronousQueue.size() == 0) {
                         // Only now we may reset the flag, since we are sure that all queued items
@@ -104,25 +95,21 @@ public abstract class TransportManager {
                         asynchronousQueue.notifyAll();
 
                         // After the queue is empty for about 2 seconds, stop this thread
-
                         try {
                             asynchronousQueue.wait(2000);
                         }
                         catch(InterruptedException ignore) {
+                            //
                         }
-
                         if(asynchronousQueue.size() == 0) {
                             asynchronousThread = null;
                             return;
                         }
                     }
-
                     item = asynchronousQueue.remove(0);
                 }
-
-
                 try {
-                    sendMessageImmediate(item.msg);
+                    sendMessageImmediate(item.message);
                 }
                 catch(IOException e) {
                     // There is no point in handling it - it simply means that the connection has a problem and we should stop
@@ -132,14 +119,6 @@ public abstract class TransportManager {
                     // same IOException and get to the same conclusion.
                     log.warning(e.getMessage());
                     return;
-                }
-                if(item.run != null) {
-                    try {
-                        item.run.run();
-                    }
-                    catch(Exception ignore) {
-                    }
-
                 }
             }
         }
@@ -155,11 +134,11 @@ public abstract class TransportManager {
     private TransportConnection tc;
     private KexManager km;
 
-    private final List<HandlerEntry> messageHandlers = new ArrayList<HandlerEntry>();
+    private final List<HandlerEntry> messageHandlers
+            = new ArrayList<HandlerEntry>();
 
-    private Thread receiveThread;
-
-    private List<ConnectionMonitor> connectionMonitors = new ArrayList<ConnectionMonitor>();
+    private List<ConnectionMonitor> connectionMonitors
+            = new ArrayList<ConnectionMonitor>();
 
     protected void init(TransportConnection tc, KexManager km) {
         this.tc = tc;
@@ -189,10 +168,7 @@ public abstract class TransportManager {
         synchronized(connectionSemaphore) {
             if(!connectionClosed) {
                 try {
-                    byte[] msg = new PacketDisconnect(Packets.SSH_DISCONNECT_BY_APPLICATION, "", "").getPayload();
-                    if(tc != null) {
-                        tc.sendMessage(msg);
-                    }
+                    tc.sendMessage(new PacketDisconnect(Packets.SSH_DISCONNECT_BY_APPLICATION, "", "").getPayload());
                 }
                 catch(IOException ignore) {
                     //
@@ -236,7 +212,7 @@ public abstract class TransportManager {
     }
 
     protected void startReceiver() throws IOException {
-        receiveThread = new Thread(new Runnable() {
+        final Thread receiveThread = new Thread(new Runnable() {
             public void run() {
                 try {
                     receiveLoop();
@@ -291,9 +267,7 @@ public abstract class TransportManager {
             if(connectionClosed) {
                 throw reasonClosedCause;
             }
-
             flagKexOngoing = true;
-
             try {
                 tc.sendMessage(msg);
             }
@@ -312,8 +286,8 @@ public abstract class TransportManager {
     }
 
     /**
-     * @param cwl
-     * @param dhgex
+     * @param cwl   Crypto wishlist
+     * @param dhgex Diffie-hellman group exchange
      * @param dsa   may be null if this is a client connection
      * @param rsa   may be null if this is a client connection
      * @throws IOException
@@ -346,12 +320,8 @@ public abstract class TransportManager {
     }
 
     public void sendAsynchronousMessage(byte[] msg) throws IOException {
-        sendAsynchronousMessage(msg, null);
-    }
-
-    public void sendAsynchronousMessage(byte[] msg, Runnable run) throws IOException {
         synchronized(asynchronousQueue) {
-            asynchronousQueue.add(new AsynchronousEntry(msg, run));
+            asynchronousQueue.add(new AsynchronousEntry(msg));
             asynchronousPending = true;
 
 			/* This limit should be flexible enough. We need this, otherwise the peer
@@ -361,19 +331,16 @@ public abstract class TransportManager {
 			 * (our send queue would grow and grow and...) */
 
             if(asynchronousQueue.size() > 100) {
-                throw new IOException("Error: the peer is not consuming our asynchronous replies.");
+                throw new IOException("The peer is not consuming our asynchronous replies.");
             }
 
-			/* Check if we have an asynchronous sending thread */
-
+            // Check if we have an asynchronous sending thread
             if(asynchronousThread == null) {
-                asynchronousThread = new AsynchronousWorker();
+                asynchronousThread = new Thread(new AsynchronousWorker());
                 asynchronousThread.setDaemon(true);
                 asynchronousThread.start();
-
-				/* The thread will stop after 2 seconds of inactivity (i.e., empty queue) */
+                // The thread will stop after 2 seconds of inactivity (i.e., empty queue)
             }
-
             asynchronousQueue.notifyAll();
         }
     }
@@ -386,28 +353,22 @@ public abstract class TransportManager {
     }
 
     /**
-     * True if no response message expected.
-     */
-    private boolean idle;
-
-    /**
      * Send a message but ensure that all queued messages are being sent first.
      *
-     * @param msg
+     * @param msg Message
      * @throws IOException
      */
     public void sendMessage(byte[] msg) throws IOException {
         synchronized(asynchronousQueue) {
             while(asynchronousPending) {
                 try {
-                    asynchronousQueue.wait(1000);
+                    asynchronousQueue.wait();
                 }
                 catch(InterruptedException e) {
                     throw new InterruptedIOException(e.getMessage());
                 }
             }
         }
-
         sendMessageImmediate(msg);
     }
 
@@ -415,23 +376,18 @@ public abstract class TransportManager {
      * Send message, ignore queued async messages that have not been delivered yet.
      * Will be called directly from the asynchronousThread thread.
      *
-     * @param msg
+     * @param msg Message
      * @throws IOException
      */
     public void sendMessageImmediate(byte[] msg) throws IOException {
-        if(Thread.currentThread() == receiveThread) {
-            throw new IOException("Assertion error: sendMessage may never be invoked by the receiver thread!");
-        }
         synchronized(connectionSemaphore) {
             while(true) {
                 if(connectionClosed) {
                     throw reasonClosedCause;
                 }
-
-                if(flagKexOngoing == false) {
+                if(!flagKexOngoing) {
                     break;
                 }
-
                 try {
                     connectionSemaphore.wait();
                 }
@@ -442,7 +398,6 @@ public abstract class TransportManager {
 
             try {
                 tc.sendMessage(msg);
-                idle = false;
             }
             catch(IOException e) {
                 close(e);
@@ -452,46 +407,33 @@ public abstract class TransportManager {
     }
 
     private void receiveLoop() throws IOException {
-        byte[] msg = new byte[MAX_PACKET_SIZE];
+        final byte[] msg = new byte[MAX_PACKET_SIZE];
         while(true) {
-            int msglen;
-            try {
-                msglen = tc.receiveMessage(msg, 0, msg.length);
-            }
-            catch(SocketTimeoutException e) {
-                // Timeout in read
-                if(idle) {
-                    log.debug("Ignoring socket timeout");
-                    continue;
-                }
-                throw e;
-            }
-            idle = true;
-
+            final int msglen = tc.receiveMessage(msg, 0, msg.length);
             final int type = msg[0] & 0xff;
-
             switch(type) {
                 case Packets.SSH_MSG_IGNORE:
                     break;
-                case Packets.SSH_MSG_DEBUG:
-                    if(log.isDebugEnabled()) {
-                        TypesReader tr = new TypesReader(msg, 0, msglen);
-                        tr.readByte();
-                        tr.readBoolean();
-                        String message = tr.readString();
-                        if(log.isDebugEnabled()) {
-                            log.debug(String.format("Debug message from remote: '%s'", message));
-                        }
-                    }
-                    break;
-                case Packets.SSH_MSG_UNIMPLEMENTED:
-                    throw new PacketTypeException(type);
-                case Packets.SSH_MSG_DISCONNECT:
+                case Packets.SSH_MSG_DEBUG: {
                     TypesReader tr = new TypesReader(msg, 0, msglen);
                     tr.readByte();
-                    int reason_code = tr.readUINT32();
-                    String reason_message = tr.readString();
-                    throw new IOException(String.format("%d %s", reason_code, reason_message));
+                    // always_display
+                    tr.readBoolean();
+                    String message = tr.readString();
+                    if(log.isDebugEnabled()) {
+                        log.debug(String.format("Debug message from remote: '%s'", message));
+                    }
+                    break;
+                }
+                case Packets.SSH_MSG_UNIMPLEMENTED:
+                    throw new PacketTypeException(type);
+                case Packets.SSH_MSG_DISCONNECT: {
+                    TypesReader tr = new TypesReader(msg, 0, msglen);
+                    tr.readByte();
+                    int code = tr.readUINT32();
+                    String message = tr.readString();
+                    throw new IOException(String.format("%d %s", code, message));
+                }
                 case Packets.SSH_MSG_KEXINIT:
                 case Packets.SSH_MSG_NEWKEYS:
                 case Packets.SSH_MSG_KEXDH_INIT:
