@@ -5,10 +5,8 @@
 package ch.ethz.ssh2.transport;
 
 /**
- * NegotiatedParameters.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
 public class NegotiatedParameters
 {

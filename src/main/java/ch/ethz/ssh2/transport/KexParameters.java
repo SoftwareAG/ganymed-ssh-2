@@ -7,10 +7,8 @@ package ch.ethz.ssh2.transport;
 import java.util.Arrays;
 
 /**
- * KexParameters.
- * 
  * @author Christian Plattner
- * @version 2.50, 03/15/10
+ * @version $Id$
  */
 public class KexParameters
 {
