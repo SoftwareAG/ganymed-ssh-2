@@ -168,7 +168,8 @@ public abstract class TransportManager {
         synchronized(connectionSemaphore) {
             if(!connectionClosed) {
                 try {
-                    tc.sendMessage(new PacketDisconnect(Packets.SSH_DISCONNECT_BY_APPLICATION, "", "").getPayload());
+                    tc.sendMessage(new PacketDisconnect(
+                            DisconnectException.Reason.SSH_DISCONNECT_BY_APPLICATION.ordinal(), "", "").getPayload());
                 }
                 catch(IOException ignore) {
                     //
@@ -432,7 +433,7 @@ public abstract class TransportManager {
                     tr.readByte();
                     int code = tr.readUINT32();
                     String message = tr.readString();
-                    throw new IOException(String.format("%d %s", code, message));
+                    throw new DisconnectException(DisconnectException.Reason.values()[code], message);
                 }
                 case Packets.SSH_MSG_KEXINIT:
                 case Packets.SSH_MSG_NEWKEYS:
