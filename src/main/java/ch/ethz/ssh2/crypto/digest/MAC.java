@@ -19,7 +19,7 @@ public final class MAC
 	{
 		/* Higher Priority First */
 
-		return new String[] { "hmac-sha1-96", "hmac-sha1", "hmac-md5-96", "hmac-md5" };
+		return new String[] { "hmac-sha2-256", "hmac-sha2-512", "hmac-sha1-96", "hmac-sha1", "hmac-md5-96", "hmac-md5" };
 	}
 
 	public final static void checkMacList(String[] macs)
@@ -30,6 +30,10 @@ public final class MAC
 
 	public final static int getKeyLen(String type)
 	{
+	    if (type.equals("hmac-sha2-256"))
+	        return 32;
+	    if (type.equals("hmac-sha2-512"))
+            return 64;
 		if (type.equals("hmac-sha1"))
 			return 20;
 		if (type.equals("hmac-sha1-96"))
@@ -43,7 +47,15 @@ public final class MAC
 
 	public MAC(String type, byte[] key)
 	{
-		if (type.equals("hmac-sha1"))
+	    if (type.equals("hmac-sha2-256"))
+	    {
+	        mac = new HMAC(new SHA2(256), key, 32);
+	    }
+	    else if (type.equals("hmac-sha2-512"))
+	    {
+	        mac = new HMAC(new SHA2(512), key, 64, 128);
+	    }
+	    else if (type.equals("hmac-sha1"))
 		{
 			mac = new HMAC(new SHA1(), key, 20);
 		}

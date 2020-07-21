@@ -23,7 +23,15 @@ public class HashForSSH2Types
 
 	public HashForSSH2Types(String type)
 	{
-		if (type.equals("SHA1"))
+		if (type.equals("SHA2-512"))
+		{
+			md = new SHA2(512);
+		}
+		else if (type.equals("SHA2-256"))
+		{
+			md = new SHA2(256);
+		}
+		else if (type.equals("SHA1"))
 		{
 			md = new SHA1();
 		}

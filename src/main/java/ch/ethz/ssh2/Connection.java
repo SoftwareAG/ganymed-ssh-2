@@ -1216,6 +1216,26 @@ public class Connection {
     }
 
     /**
+     * Define the set of allowed key exchange methods.
+     * 
+     * @param algos An array of allowed key exchange methods. The following are supported: 
+     *              diffie-hellman-group14-sha256, 
+     *              diffie-hellman-group16-sha512, 
+     *              diffie-hellman-group18-sha512, 
+     *              diffie-hellman-group14-sha1, 
+     *              diffie-hellman-group1-sha1, 
+     *              diffie-hellman-group-exchange-sha1
+     */
+    public synchronized void setClientKexAlgorithms(String[] algos) {
+        if ((algos == null) || (algos.length == 0)) {
+            throw new IllegalArgumentException();
+        }
+        algos = removeDuplicates(algos);
+        KexManager.checkClientKexAlgorithmList(algos);
+        cryptoWishList.kexAlgorithms = algos;
+    }
+
+    /**
      * Enable/disable TCP_NODELAY (disable/enable Nagle's algorithm) on the underlying socket.
      * <p/>
      * Can be called at any time. If the connection has not yet been established

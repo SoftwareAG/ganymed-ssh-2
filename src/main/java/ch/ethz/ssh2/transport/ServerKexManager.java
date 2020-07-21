@@ -96,7 +96,7 @@ public class ServerKexManager extends KexManager
 			if (kxs.np.kex_algo.equals("diffie-hellman-group1-sha1")
 					|| kxs.np.kex_algo.equals("diffie-hellman-group14-sha1"))
 			{
-				kxs.dhx = new DhExchange();
+				kxs.dhx = new DhExchange("SHA1");
 
 				if (kxs.np.kex_algo.equals("diffie-hellman-group1-sha1"))
 					kxs.dhx.serverInit(1, rnd);

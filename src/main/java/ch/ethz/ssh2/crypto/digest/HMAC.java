@@ -22,12 +22,17 @@ public final class HMAC implements Digest
 
 	public HMAC(Digest md, byte[] key, int size)
 	{
+	    this(md, key, size, 64);
+	}
+
+	public HMAC(Digest md, byte[] key, int size, int blocksize)
+	{
 		this.md = md;
 		this.size = size;
 
 		tmp = new byte[md.getDigestLength()];
 
-		final int BLOCKSIZE = 64;
+		final int BLOCKSIZE = blocksize;
 
 		k_xor_ipad = new byte[BLOCKSIZE];
 		k_xor_opad = new byte[BLOCKSIZE];

@@ -1,3 +1,26 @@
+This repository is forked from one of the automatic exports of code.google.com/p/ganymed-ssh-2 and contains updates on top of the ganymed-ssh2-262 tag. The ganymed-ssh2-262 tag was used to produce the latest public build in Maven Central, which is version 262, so builds from this repository should be version 263. The latest public build in Maven Central is available at https://search.maven.org/artifact/ch.ethz.ganymed/ganymed-ssh2/262/jar
+The following features were added in version 263:
+- Gradle build support.
+- OSGi support.
+- Message authentication: support for hmac-sha2-256 and hmac-sha2-512.
+- Key exchange: support for diffie-hellman-group14-sha256, diffie-hellman-group16-sha512, and diffie-hellman-group18-sha512.
+
+The code from this repository is used in Software AG Command Central and tested using the Command Central continuous integration. However, this code is not officially supported by Software AG. 
+
+
+**********************************
+
+This software is provided as-is and without warranty or support. It does not constitute part of the Software AG product suite. Users are free to use, fork and modify it, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.
+
+**********************************
+
+
+
+
+Original content:
+
+
+
 
 Ganymed SSH-2 for Java - build 261
 ==================================

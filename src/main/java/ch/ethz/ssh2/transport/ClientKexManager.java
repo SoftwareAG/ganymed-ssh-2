@@ -148,19 +148,33 @@ public class ClientKexManager extends KexManager
 				return;
 			}
 
-			if (kxs.np.kex_algo.equals("diffie-hellman-group1-sha1")
-					|| kxs.np.kex_algo.equals("diffie-hellman-group14-sha1"))
+			if (kxs.np.kex_algo.equals("diffie-hellman-group1-sha1"))
 			{
-				kxs.dhx = new DhExchange();
+				sendKexDhInit("SHA1", 1);
+				return;
+			}
 
-				if (kxs.np.kex_algo.equals("diffie-hellman-group1-sha1"))
-					kxs.dhx.clientInit(1, rnd);
-				else
-					kxs.dhx.clientInit(14, rnd);
+			if (kxs.np.kex_algo.equals("diffie-hellman-group14-sha1"))
+			{
+				sendKexDhInit("SHA1", 14);
+				return;
+			}
 
-				PacketKexDHInit kp = new PacketKexDHInit(kxs.dhx.getE());
-				tm.sendKexMessage(kp.getPayload());
-				kxs.state = 1;
+			if (kxs.np.kex_algo.equals("diffie-hellman-group14-sha256"))
+			{
+				sendKexDhInit("SHA2-256", 14);
+				return;
+			}
+
+			if (kxs.np.kex_algo.equals("diffie-hellman-group16-sha512"))
+			{
+				sendKexDhInit("SHA2-512", 16);
+				return;
+			}
+
+			if (kxs.np.kex_algo.equals("diffie-hellman-group18-sha512"))
+			{
+				sendKexDhInit("SHA2-512", 18);
 				return;
 			}
 
@@ -282,7 +296,10 @@ public class ClientKexManager extends KexManager
 		}
 
 		if (kxs.np.kex_algo.equals("diffie-hellman-group1-sha1")
-				|| kxs.np.kex_algo.equals("diffie-hellman-group14-sha1"))
+				|| kxs.np.kex_algo.equals("diffie-hellman-group14-sha1")
+				|| kxs.np.kex_algo.equals("diffie-hellman-group14-sha256")
+				|| kxs.np.kex_algo.equals("diffie-hellman-group16-sha512")
+				|| kxs.np.kex_algo.equals("diffie-hellman-group18-sha512"))
 		{
 			if (kxs.state == 1)
 			{
@@ -335,5 +352,13 @@ public class ClientKexManager extends KexManager
 		}
 
 		throw new IllegalStateException("Unkown KEX method! (" + kxs.np.kex_algo + ")");
+	}
+
+	private void sendKexDhInit(String hash, int group) throws IOException {
+		kxs.dhx = new DhExchange(hash);
+		kxs.dhx.clientInit(group, rnd);
+		PacketKexDHInit kp = new PacketKexDHInit(kxs.dhx.getE());
+		tm.sendKexMessage(kp.getPayload());
+		kxs.state = 1;
 	}
 }

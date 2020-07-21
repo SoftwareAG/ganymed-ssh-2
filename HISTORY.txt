@@ -2,6 +2,16 @@
 Release Notes:
 ==============
 
+build263 2020-07-20
+
+- Add gradle build.
+
+- Add OSGi support.
+
+- Message authentication: add support for hmac-sha2-256 and hmac-sha2-512.
+
+- Key exchange: add support for diffie-hellman-group14-sha256, diffie-hellman-group16-sha512 and diffie-hellman-group18-sha512.
+
 build261, 2013-08-09
 
 - Joint work by Christian Plattner and David Kocher.

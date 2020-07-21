@@ -7,6 +7,7 @@ package ch.ethz.ssh2.transport;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.security.SecureRandom;
+import java.util.Arrays;
 
 import ch.ethz.ssh2.ConnectionInfo;
 import ch.ethz.ssh2.DHGexParameters;
@@ -245,7 +246,8 @@ public abstract class KexManager implements MessageHandler
 			int enc_sc_key_len = BlockCipherFactory.getKeySize(kxs.np.enc_algo_server_to_client);
 			int enc_sc_block_len = BlockCipherFactory.getBlockSize(kxs.np.enc_algo_server_to_client);
 
-			km = KeyMaterial.create("SHA1", kxs.H, kxs.K, sessionId, enc_cs_key_len, enc_cs_block_len, mac_cs_key_len,
+			String hash = (null != kxs.dhx) ? kxs.dhx.getHashFunction() : "SHA1";
+			km = KeyMaterial.create(hash, kxs.H, kxs.K, sessionId, enc_cs_key_len, enc_cs_block_len, mac_cs_key_len,
 					enc_sc_key_len, enc_sc_block_len, mac_sc_key_len);
 		}
 		catch (IllegalArgumentException e)
@@ -306,30 +308,22 @@ public abstract class KexManager implements MessageHandler
 
 	public static final String[] getDefaultClientKexAlgorithmList()
 	{
-		return new String[] { "diffie-hellman-group-exchange-sha1", "diffie-hellman-group14-sha1",
-				"diffie-hellman-group1-sha1" };
+		return new String[] { "diffie-hellman-group14-sha256", "diffie-hellman-group16-sha512", "diffie-hellman-group18-sha512", 
+	 		"diffie-hellman-group14-sha1", "diffie-hellman-group1-sha1", "diffie-hellman-group-exchange-sha1" };
+	}
+
+	public static final void checkClientKexAlgorithmList(String[] algos) {
+		String[] defaultAlgos = getDefaultClientKexAlgorithmList();
+		Arrays.sort(defaultAlgos);
+		for (String algo : algos) {
+			if (Arrays.binarySearch(defaultAlgos, algo) < 0) {
+				throw new IllegalArgumentException("Unknown KEX method " + algo);
+			}
+		}
 	}
 
 	public static final String[] getDefaultServerKexAlgorithmList()
 	{
 		return new String[] { "diffie-hellman-group14-sha1", "diffie-hellman-group1-sha1" };
 	}
-
-	public static final void checkKexAlgorithmList(String[] algos)
-	{
-		for (int i = 0; i < algos.length; i++)
-		{
-			if ("diffie-hellman-group-exchange-sha1".equals(algos[i]))
-				continue;
-
-			if ("diffie-hellman-group14-sha1".equals(algos[i]))
-				continue;
-
-			if ("diffie-hellman-group1-sha1".equals(algos[i]))
-				continue;
-
-			throw new IllegalArgumentException("Unknown kex algorithm '" + algos[i] + "'");
-		}
-	}
-
 }

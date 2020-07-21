@@ -1,0 +1,41 @@
+plugins {
+    id 'java-library'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.11'
+}
+
+group = 'ch.ethz.ganymed'
+version = '263'
+description = 'ganymed-ssh2'
+sourceCompatibility = '1.6'
+
+sourceSets.main.resources.srcDir project.rootDir
+sourceSets.main.resources.includes = [ 'FAQ.html', 'HISTORY.txt', 'LICENSE.txt', 'overview.html', 'README.txt' ]
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+javadoc.failOnError = false
+
+jar {
+    manifest {
+        attributes(
+            'Bundle-Description': 'Ganymed SSH2 Client Library',
+            'Bundle-SymbolicName': 'ch.ethz.ssh2.ganymed-ssh2',
+            'Bundle-ManifestVersion': '2',
+            'Bundle-ActivationPolicy': 'lazy',
+            'Bundle-RequiredExecutionEnvironment': 'JavaSE-1.6',
+            'Export-Package': 'ch.ethz.ssh2;version=1.0.0,ch.ethz.ssh2.auth;version=1.0.0,ch.ethz.ssh2.channel;version=1.0.0,ch.ethz.ssh2.crypto;version=1.0.0,ch.ethz.ssh2.crypto.cipher;version=1.0.0,ch.ethz.ssh2.crypto.dh;version=1.0.0,ch.ethz.ssh2.crypto.digest;version=1.0.0,ch.ethz.ssh2.log;version=1.0.0,ch.ethz.ssh2.packets;version=1.0.0,ch.ethz.ssh2.server;version=1.0.0,ch.ethz.ssh2.sftp;version=1.0.0,ch.ethz.ssh2.signature;version=1.0.0,ch.ethz.ssh2.transport;version=1.0.0,ch.ethz.ssh2.util;version=1.0.0',
+            'Bundle-Version': '1.0.263',
+            'Bundle-Name': 'Ganymed SSH2'
+        )
+    }
+}
