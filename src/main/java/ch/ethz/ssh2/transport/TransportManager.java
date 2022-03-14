@@ -165,8 +165,8 @@ public abstract class TransportManager {
         return tc.getPacketOverheadEstimate();
     }
 
-    public ConnectionInfo getConnectionInfo(int kexNumber) throws IOException {
-        return km.getOrWaitForConnectionInfo(kexNumber);
+    public ConnectionInfo getConnectionInfo(int kexNumber, int timeoutMs) throws IOException {
+        return km.getOrWaitForConnectionInfo(kexNumber, timeoutMs);
     }
 
     public Throwable getReasonClosedCause() {

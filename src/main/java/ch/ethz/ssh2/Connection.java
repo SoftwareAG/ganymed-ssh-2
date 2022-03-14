@@ -756,7 +756,7 @@ public class Connection {
 
 			/* Wait until first KEX has finished */
 
-            ConnectionInfo ci = tm.getConnectionInfo(1);
+            ConnectionInfo ci = tm.getConnectionInfo(1, connectTimeout);
 
 			/* Now try to cancel the timeout, if needed */
 
@@ -926,7 +926,7 @@ public class Connection {
     public synchronized ConnectionInfo getConnectionInfo() throws IOException {
         this.checkConnection();
 
-        return tm.getConnectionInfo(1);
+        return tm.getConnectionInfo(1, 0);
     }
 
     /**

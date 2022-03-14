@@ -63,7 +63,7 @@ public abstract class KexManager implements MessageHandler
 		this.rnd = rnd;
 	}
 
-	public ConnectionInfo getOrWaitForConnectionInfo(int minKexCount) throws IOException
+	public ConnectionInfo getOrWaitForConnectionInfo(int minKexCount, int timeoutMs) throws IOException
 	{
         synchronized (accessLock)
         {
@@ -77,7 +77,7 @@ public abstract class KexManager implements MessageHandler
 
                 try
                 {
-                    accessLock.wait();
+                    accessLock.wait(timeoutMs);
                 }
                 catch (InterruptedException e)
                 {
