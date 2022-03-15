@@ -133,7 +133,7 @@ public class ServerConnection
 
 		/* Wait until first KEX has finished */
 
-		state.tm.getConnectionInfo(1);
+		state.tm.getConnectionInfo(1, timeout_milliseconds);
 	}
 
 	/**
@@ -192,7 +192,7 @@ public class ServerConnection
 						"Cannot get details of connection, you need to start the key exchange first.");
 		}
 
-		return state.tm.getConnectionInfo(1);
+		return state.tm.getConnectionInfo(1, 0);
 	}
 
 	/**
